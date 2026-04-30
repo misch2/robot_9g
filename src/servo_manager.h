@@ -20,23 +20,18 @@ struct ServoSettings {
 
 class ServoManager {
 public:
-    ServoManager(int activeCount) : activeCount(activeCount) {};
-    ~ServoManager();
-    void addServo(int pinNumber, int minPulseLength, int maxPulseLength,
-                  int minAngle = 0, int maxAngle = 180, int neutralAngle = 90) {
-        if (activeCount >= SERVOS_COUNT_LIMIT) return;  // Prevent overflow
-        settings.push_back(ServoSettings(pinNumber, minPulseLength, maxPulseLength, minAngle, maxAngle, neutralAngle));
-        activeCount++;
-    }
+    static constexpr size_t kCount = static_cast<size_t>(ServoId::_Count);
 
+    ~ServoManager();
+    void addServo(ServoId id, int pinNumber, int minPulseLength, int maxPulseLength,
+                  int minAngle = 0, int maxAngle = 180, int neutralAngle = 90);
     void begin();
-    void setAngle(int index, float angle);
+    void setAngle(ServoId id, float angle);
 
 private:
-    int activeCount = 0;  // Number of active servos (can be less than SERVO_COUNT)
-    Servo servos[SERVOS_COUNT_LIMIT];
+    Servo servos[kCount];
     std::vector<ServoSettings> settings;
-    void attachServo(int index);
-    void detachServo(int index);
-    float clampAngle(int index, float angle);
+    void attachServo(size_t index);
+    void detachServo(size_t index);
+    float clampAngle(size_t index, float angle);
 };
