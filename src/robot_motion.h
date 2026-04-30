@@ -88,6 +88,8 @@ private:
     struct Job {
         Action action = Action::None;
         int remaining = 0;  // signed half-step count; sign = direction
+        Job()         = default;
+        Job(Action a, int r) : action(a), remaining(r) {}
     };
 
     ServoMotion& motion;
