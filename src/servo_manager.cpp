@@ -1,5 +1,12 @@
 #include "servo_manager.h"
 
+ServoManager::ServoManager() {
+    // Reserve up front so push_back never reallocates: Servo holds timer/channel
+    // state that isn't safe to move once attached.
+    servos.reserve(kCount);
+    settings.reserve(kCount);
+}
+
 ServoManager::~ServoManager() {
     for (size_t i = 0; i < settings.size(); i++) {
         detachServo(i);
@@ -9,6 +16,11 @@ ServoManager::~ServoManager() {
 void ServoManager::addServo(ServoId id, int pinNumber, int minPulseLength, int maxPulseLength,
                             int minAngle, int maxAngle, int neutralAngle) {
     size_t index = static_cast<size_t>(id);
+    if (index >= kCount) {
+        Serial.printf("ServoManager: addServo id %u exceeds kCount %u\n",
+                      (unsigned)index, (unsigned)kCount);
+        return;
+    }
     // Enforce that registration order matches the ServoId enum order, so the
     // enum value can be used directly as the array index.
     if (index != settings.size()) {
@@ -17,12 +29,13 @@ void ServoManager::addServo(ServoId id, int pinNumber, int minPulseLength, int m
         return;
     }
     settings.push_back(ServoSettings(pinNumber, minPulseLength, maxPulseLength, minAngle, maxAngle, neutralAngle));
+    servos.emplace_back();
 }
 
 void ServoManager::begin() {
     for (size_t i = 0; i < settings.size(); i++) {
         attachServo(i);
-        servos[i].write((int)clampAngle(i, settings[i].neutralAngle));
+        setAngle(static_cast<ServoId>(i), settings[i].neutralAngle);
     }
 }
 
@@ -42,20 +55,29 @@ void ServoManager::detachServo(size_t index) {
     }
 }
 
-float ServoManager::clampAngle(size_t index, float angle) {
+float ServoManager::clampAngle(size_t index, float angle) const {
     if (index >= settings.size()) return 0.0f;
     if (angle < settings[index].minAngle) return settings[index].minAngle;
     if (angle > settings[index].maxAngle) return settings[index].maxAngle;
     return angle;
 }
 
+int ServoManager::angleToMicroseconds(size_t index, float angle) const {
+    // Match ESP32Servo's internal mapping: attach(pin, minPulse, maxPulse) maps
+    // 0..180 deg to minPulse..maxPulse linearly. Done in float for sub-degree
+    // resolution that Servo::write(int) would otherwise truncate.
+    const ServoSettings& s = settings[index];
+    float us               = s.minPulseLength + (angle / 180.0f) * (s.maxPulseLength - s.minPulseLength);
+    return (int)lroundf(us);
+}
+
 void ServoManager::setAngle(ServoId id, float angle) {
     size_t index = static_cast<size_t>(id);
     if (index >= settings.size()) return;
     attachServo(index);
-    float clamped = clampAngle(index, angle);
+    float clamped                = clampAngle(index, angle);
     settings[index].currentAngle = clamped;
-    servos[index].write((int)clamped);
+    servos[index].writeMicroseconds(angleToMicroseconds(index, clamped));
 }
 
 float ServoManager::getCurrentAngle(ServoId id) const {
