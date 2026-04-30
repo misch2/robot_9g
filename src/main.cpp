@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include "config.h"
 #include "servo_manager.h"
+#include "servo_motion.h"
 
 ServoManager servoManager;
+ServoMotion servoMotion(servoManager);
 
 void setup() {
     Serial.begin(115200);
@@ -20,4 +22,5 @@ void setup() {
 }
 
 void loop() {
+    servoMotion.update();
 }

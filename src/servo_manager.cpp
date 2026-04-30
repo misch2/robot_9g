@@ -53,5 +53,13 @@ void ServoManager::setAngle(ServoId id, float angle) {
     size_t index = static_cast<size_t>(id);
     if (index >= settings.size()) return;
     attachServo(index);
-    servos[index].write((int)clampAngle(index, angle));
+    float clamped = clampAngle(index, angle);
+    settings[index].currentAngle = clamped;
+    servos[index].write((int)clamped);
+}
+
+float ServoManager::getCurrentAngle(ServoId id) const {
+    size_t index = static_cast<size_t>(id);
+    if (index >= settings.size()) return 0.0f;
+    return settings[index].currentAngle;
 }

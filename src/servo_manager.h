@@ -6,16 +6,17 @@
 #include <vector>
 
 struct ServoSettings {
-    int pinNumber;       // GPIO pin assigned to this servo
-    int minPulseLength;  // microseconds
-    int maxPulseLength;  // microseconds
-    int minAngle;        // degrees
-    int maxAngle;        // degrees
-    int neutralAngle;    // degrees
-    bool attached;       // whether the servo is currently attached
+    int pinNumber;        // GPIO pin assigned to this servo
+    int minPulseLength;   // microseconds
+    int maxPulseLength;   // microseconds
+    int minAngle;         // degrees
+    int maxAngle;         // degrees
+    int neutralAngle;     // degrees
+    float currentAngle;   // last commanded angle (clamped, pre-int)
+    bool attached;        // whether the servo is currently attached
 
     ServoSettings(int pinNumber, int minPulseLength, int maxPulseLength, int minAngle, int maxAngle, int neutralAngle)
-        : pinNumber(pinNumber), minPulseLength(minPulseLength), maxPulseLength(maxPulseLength), minAngle(minAngle), maxAngle(maxAngle), neutralAngle(neutralAngle), attached(false) {}
+        : pinNumber(pinNumber), minPulseLength(minPulseLength), maxPulseLength(maxPulseLength), minAngle(minAngle), maxAngle(maxAngle), neutralAngle(neutralAngle), currentAngle((float)neutralAngle), attached(false) {}
 };
 
 class ServoManager {
@@ -27,6 +28,7 @@ public:
                   int minAngle = 0, int maxAngle = 180, int neutralAngle = 90);
     void begin();
     void setAngle(ServoId id, float angle);
+    float getCurrentAngle(ServoId id) const;
 
 private:
     Servo servos[kCount];
