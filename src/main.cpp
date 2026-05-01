@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "config.h"
+#include "robot_face.h"
 #include "robot_motion.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
@@ -7,6 +8,7 @@
 ServoManager servoManager;
 ServoMotion servoMotion(servoManager);
 RobotMotion robotMotion(servoMotion);
+RobotFace robotFace;
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
 // Use this duration for all of them so the visual feedback is consistent.
@@ -134,6 +136,7 @@ void setup() {
     Serial.println("Starting...");
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
 
+    robotFace.begin();
     servoManager.begin();
     robotMotion.begin();
 
@@ -144,4 +147,5 @@ void loop() {
     processSerialInput();
     servoMotion.update();
     robotMotion.update();
+    robotFace.update();
 }
