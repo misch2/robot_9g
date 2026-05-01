@@ -95,8 +95,9 @@ private:
     size_t tail = 0;
     Job currentJob;
     Phase phase           = Phase::Idle;
-    bool nextDiagonalA    = true;  // which diagonal lifts on the next half-step
-    bool currentDiagonalA = true;  // diagonal lifted in the current half-step
+    bool nextDiagonalA    = true;   // which diagonal lifts on the next half-step
+    bool currentDiagonalA = true;   // diagonal lifted in the current half-step
+    bool settling         = false;  // running the recenter half-step at job end
 
     bool queueEmpty() const { return head == tail; }
     bool queueFull() const { return ((tail + 1) % kMaxJobs) == head; }

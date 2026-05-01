@@ -61,9 +61,15 @@ void RobotMotion::issueActuate() {
     // sign +1 = forward / left (the "primary" job direction), -1 = reverse.
     // When diagonalA is lifted, primary job direction maps to +actuateFraction;
     // when diagonalB is lifted the body servo must go the opposite way to keep
-    // pushing the body the same way.
-    const int sign       = (currentJob.remaining > 0) ? 1 : -1;
-    const float fraction = (((sign > 0) == currentDiagonalA) ? +1.0f : -1.0f) * config.actuateFraction;
+    // pushing the body the same way. Settling targets 0 to recenter the body
+    // actuator while a diagonal is still lifted (no friction fight).
+    float fraction;
+    if (settling) {
+        fraction = 0.0f;
+    } else {
+        const int sign = (currentJob.remaining > 0) ? 1 : -1;
+        fraction       = (((sign > 0) == currentDiagonalA) ? +1.0f : -1.0f) * config.actuateFraction;
+    }
     const ServoId target = (currentJob.action == Action::Walk) ? ServoId::Translation : ServoId::Rotation;
     motion.moveToFraction(target, fraction, config.actuateMs);
 }
@@ -103,13 +109,24 @@ void RobotMotion::update() {
                 phase = Phase::Drop;
                 return;
             case Phase::Drop:
-                if (currentJob.remaining > 0)
-                    currentJob.remaining--;
-                else if (currentJob.remaining < 0)
-                    currentJob.remaining++;
                 nextDiagonalA = !currentDiagonalA;
                 phase         = Phase::Idle;
-                if (currentJob.remaining == 0) currentJob.action = Action::None;
+                if (settling) {
+                    // The settle drop just finished — job is fully done.
+                    settling          = false;
+                    currentJob.action = Action::None;
+                } else {
+                    if (currentJob.remaining > 0)
+                        currentJob.remaining--;
+                    else if (currentJob.remaining < 0)
+                        currentJob.remaining++;
+                    if (currentJob.remaining == 0) {
+                        // Run one more lift / actuate(0) / drop to recenter
+                        // the body actuator while a diagonal is lifted, so a
+                        // subsequent reversal doesn't waste its first half-step.
+                        settling = true;
+                    }
+                }
                 break;
             case Phase::Pose:
                 phase             = Phase::Idle;
