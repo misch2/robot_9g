@@ -29,6 +29,13 @@ static void printHelp() {
     Serial.println("   c     Crouch");
     Serial.println("   v     Stand (full neutral pose)");
     Serial.println("   ?     This help");
+    Serial.println(" Servo pin mapping:");
+    Serial.printf("   FrontLeft   = GPIO %d\n", PIN_SERVO_1);
+    Serial.printf("   FrontRight  = GPIO %d\n", PIN_SERVO_2);
+    Serial.printf("   RearLeft    = GPIO %d\n", PIN_SERVO_3);
+    Serial.printf("   RearRight   = GPIO %d\n", PIN_SERVO_4);
+    Serial.printf("   Rotation    = GPIO %d\n", PIN_SERVO_5);
+    Serial.printf("   Translation = GPIO %d\n", PIN_SERVO_6);
     Serial.println();
 }
 
