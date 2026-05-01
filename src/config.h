@@ -34,13 +34,13 @@ struct ServoSpec {
 };
 
 constexpr ServoSpec kServos[] = {
-    //                                  min, max, rest,  direction
-    {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  90,  0.0f,   +1}, // lifts up
-    {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
-    {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  0.0f,   +1}, // lifts up
-    {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
-    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 45, 135, 90.0f,  -1}, // primary = left
-    {ServoId::Translation, "Translation", PIN_SERVO_6, 25, 155, 90.0f,  +1}, // primary = forward
+    //
+    {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  95,  95.0f, -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
+    {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, 90, 180, 90.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  90.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 90.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 45, 135, 90.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
+    {ServoId::Translation, "Translation", PIN_SERVO_6, 25, 155, 90.0f, +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),

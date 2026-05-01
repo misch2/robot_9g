@@ -33,12 +33,10 @@ static void printHelp() {
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   ?     This help");
-    Serial.println();
     Serial.println(" Servo pin mapping:");
     for (const ServoSpec& spec : kServos) {
         Serial.printf("   %s = GPIO %d\n", spec.name, spec.pin);
     }
-    Serial.println();
     Serial.println();
 }
 
@@ -122,8 +120,9 @@ static void handleKey(char c) {
 
         case '\r':
         case '\n':
-        case ' ':
-            break;  // ignore line endings and spaces
+            Serial.println();
+            break;  // ignore line endings
+
         default:
             Serial.printf("Unknown key '%c' (0x%02x). Press '?' for help.\n", c, (unsigned)c);
             break;

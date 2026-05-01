@@ -16,8 +16,8 @@ void ServoManager::begin() {
         const ServoSpec& spec = kServos[i];
         servos.emplace_back((uint8_t)i, spec.pin, SERVO_MIN_PULSE, SERVO_MAX_PULSE,
                             spec.minAngle, spec.maxAngle, (int)lroundf(spec.restAngle));
-        Serial.printf("ServoManager: id=%u pin=%d range=[%d..%d] rest=%.1f primary=%+d\n",
-                      (unsigned)i, spec.pin, spec.minAngle, spec.maxAngle,
+        Serial.printf("ServoManager: id=%u (%s) pin=%d range=[%d..%d] rest=%.1f primary=%+d\n",
+                      (unsigned)i, spec.name, spec.pin, spec.minAngle, spec.maxAngle,
                       spec.restAngle, (int)spec.primaryDirection);
     }
     for (auto& s : servos) {

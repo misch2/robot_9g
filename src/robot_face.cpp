@@ -55,6 +55,11 @@ void RobotFace::setExpression(Expression e) {
 void RobotFace::cycleExpression() {
     int next = (int)expression + 1;
     if (next >= (int)Expression::_Count) next = 0;
+
+    // FIXME tmp skip Neutral and Curious until I add some more expressions in that vein; they look weird with the current mouth set.
+    if (next == (int)Expression::Neutral) next = (int)Expression::Concentrating;
+    if (next == (int)Expression::Curious) next = (int)Expression::Concentrating;
+
     setExpression((Expression)next);
 }
 
@@ -64,8 +69,8 @@ const char* RobotFace::expressionName(Expression e) {
             return "Happy";
         case Expression::Neutral:
             return "Neutral";
-        // case Expression::Curious:
-        //     return "Curious";
+        case Expression::Curious:
+            return "Curious";
         case Expression::Concentrating:
             return "Concentrating";
         case Expression::Worried:
@@ -173,21 +178,24 @@ void RobotFace::drawBrow(TFT_eSprite& s, bool isLeft) {
 
     switch (expression) {
         case Expression::Happy:
+            // FIXME no eyebrows for happy face
+            return;
+
             // Flat, lifted — relaxed/welcoming. Any inner-down tilt here
             // pairs with the smile to read "devilish", so keep it level.
-            baseLift = +3.0f;
+            baseLift = +9.0f;  // +3.0f;
             break;
         case Expression::Neutral:
             // Slight lift so the brow isn't crowding the eye (which reads
             // as a stare).
             baseLift = +2.0f;
             break;
-        // case Expression::Curious:
-        //     // Strong asymmetric raise — classic single-raised-brow look.
-        //     // The other brow stays slightly lifted so it doesn't sit
-        //     // angrily on the eye.
-        //     baseLift = isLeft ? +8.0f : +2.0f;
-        //     break;
+        case Expression::Curious:
+            // Strong asymmetric raise — classic single-raised-brow look.
+            // The other brow stays slightly lifted so it doesn't sit
+            // angrily on the eye.
+            baseLift = isLeft ? +8.0f : +2.0f;
+            break;
         case Expression::Concentrating:
             // Lowered AND flat. The V-shape (inner ends down) reads as
             // angry; flat lowered reads as focused/stern.
@@ -239,9 +247,9 @@ void RobotFace::drawMouth() {
             int cy     = kMouthCenterY - 27;  // circle center above mouth
             int spread = 55;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
-                              360 - spread, 360, kMouthColor, kBgColor);
+                              360 - spread, 360, kMouthColor, kBgColor, true);
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
-                              0, spread, kMouthColor, kBgColor);
+                              0, spread, kMouthColor, kBgColor, true);
             break;
         }
         case Expression::Neutral: {
@@ -256,18 +264,18 @@ void RobotFace::drawMouth() {
                               0, spread, kMouthColor, kBgColor);
             break;
         }
-        // case Expression::Curious: {
-        //     // Slight smile, shifted right for an asymmetric look.
-        //     int r      = 80;
-        //     int cx     = kMouthCenterX + 6;
-        //     int cy     = kMouthCenterY - 67;
-        //     int spread = 22;
-        //     tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
-        //                       360 - spread, 360, kMouthColor, kBgColor);
-        //     tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
-        //                       0, spread, kMouthColor, kBgColor);
-        //     break;
-        // }
+        case Expression::Curious: {
+            // Slight smile, shifted right for an asymmetric look.
+            int r      = 80;
+            int cx     = kMouthCenterX + 6;
+            int cy     = kMouthCenterY - 67;
+            int spread = 22;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              360 - spread, 360, kMouthColor, kBgColor);
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              0, spread, kMouthColor, kBgColor);
+            break;
+        }
         case Expression::Concentrating: {
             // Flat tight line.
             int w = 50, h = 6;

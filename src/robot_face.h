@@ -20,7 +20,7 @@ public:
     enum class Expression : uint8_t {
         Happy,
         Neutral,
-        // Curious,
+        Curious,
         Concentrating,
         Worried,
         Sad,
