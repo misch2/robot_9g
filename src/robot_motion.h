@@ -21,6 +21,13 @@
 // the diagonal. The next half-step lifts the other diagonal and drives the
 // body servo to the opposite extreme. Two half-steps make one full stride.
 //
+// The three sub-motions overlap on a fixed schedule: body actuation begins
+// `bodyLeadInMs` after the lift starts (so the legs are already partially
+// raised), and the drop is timed so the legs touch down `bodySettleMs` after
+// the body finishes moving. The legs and body servos are independent, so
+// overlapping is safe and the gait is much smoother than a strictly serial
+// lift→actuate→drop sequence.
+//
 // All commands are queued and asynchronous; call update() from loop().
 class RobotMotion {
 public:
@@ -48,6 +55,19 @@ public:
         uint32_t actuateMs = 350;
         uint32_t legDropMs = 400;  // 200;
         uint32_t poseMs    = 400;
+
+        // Overlap timing within a half-step.
+        // bodyLeadInMs: how long after the lift starts before body actuation
+        //   begins. Small values make the gait smoother but require the legs
+        //   to be off the ground quickly.
+        // bodySettleMs: minimum margin between body actuation finishing and
+        //   the legs touching the ground. The actual margin may be larger if
+        //   the leg lift+drop time exceeds the body actuation time.
+        uint32_t bodyLeadInMs = 60;
+        uint32_t bodySettleMs = 50;
+
+        // Dance: how long each leg holds at the top before dropping back down.
+        uint32_t danceHoldMs = 50;  // 120;
     };
 
     explicit RobotMotion(ServoMotion& motion);
@@ -63,6 +83,7 @@ public:
     void sit();
     void crouch();
     void stand();
+    void dance(int rotations = 1);  // lift+drop each leg clockwise; one rotation = 4 legs
 
     void update();
     bool isIdle() const;
@@ -73,11 +94,11 @@ private:
                                   Rotate,
                                   Crouch,
                                   Sit,
-                                  Stand };
+                                  Stand,
+                                  Dance };
     enum class Phase : uint8_t { Idle,
-                                 Lift,
-                                 Actuate,
-                                 Drop,
+                                 HalfStep,
+                                 DanceStep,
                                  Pose };
 
     static constexpr size_t kMaxJobs = 8;
@@ -99,10 +120,25 @@ private:
     bool currentDiagonalA = true;   // diagonal lifted in the current half-step
     bool settling         = false;  // running the recenter half-step at job end
 
+    // Half-step schedule (absolute millis() timestamps).
+    uint32_t actuateAtMs   = 0;
+    uint32_t dropAtMs      = 0;
+    uint32_t halfStepEndMs = 0;
+    bool actuateIssued     = false;
+    bool dropIssued        = false;
+
+    // Dance step schedule.
+    uint8_t danceLegIdx     = 0;  // index into the clockwise leg order
+    uint32_t danceDropAtMs  = 0;
+    uint32_t danceStepEndMs = 0;
+    bool danceDropIssued    = false;
+
     bool queueEmpty() const { return head == tail; }
     bool queueFull() const { return ((tail + 1) % kMaxJobs) == head; }
     void enqueue(const Job& j);
 
+    void startHalfStep();
+    void startDanceStep();
     void issueLift();
     void issueActuate();
     void issueDrop();

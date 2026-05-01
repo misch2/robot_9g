@@ -6,6 +6,9 @@ constexpr ServoId kDiagA[2]   = {ServoId::RearLeft, ServoId::FrontRight};
 constexpr ServoId kDiagB[2]   = {ServoId::FrontLeft, ServoId::RearRight};
 constexpr ServoId kAllLegs[4] = {ServoId::FrontLeft, ServoId::FrontRight,
                                  ServoId::RearLeft, ServoId::RearRight};
+// Clockwise viewed from above with the robot facing forward.
+constexpr ServoId kClockwiseLegs[4] = {ServoId::FrontLeft, ServoId::FrontRight,
+                                       ServoId::RearRight, ServoId::RearLeft};
 }  // namespace
 
 RobotMotion::RobotMotion(ServoMotion& m) : motion(m) {}
@@ -40,6 +43,11 @@ void RobotMotion::rotate(float degrees) {
 void RobotMotion::sit() { enqueue({Action::Sit, 0}); }
 void RobotMotion::crouch() { enqueue({Action::Crouch, 0}); }
 void RobotMotion::stand() { enqueue({Action::Stand, 0}); }
+
+void RobotMotion::dance(int rotations) {
+    if (rotations <= 0) return;
+    enqueue({Action::Dance, rotations * 4});
+}
 
 bool RobotMotion::isIdle() const {
     return phase == Phase::Idle && currentJob.action == Action::None && queueEmpty();
@@ -94,63 +102,115 @@ void RobotMotion::issuePose(Action action) {
     }
 }
 
+void RobotMotion::startDanceStep() {
+    const ServoId leg = kClockwiseLegs[danceLegIdx & 3];
+    motion.moveToFraction(leg, config.liftFraction, config.legLiftMs);
+
+    const uint32_t now = millis();
+    danceDropAtMs      = now + config.legLiftMs + config.danceHoldMs;
+    danceStepEndMs     = danceDropAtMs + config.legDropMs;
+    danceDropIssued    = false;
+    phase              = Phase::DanceStep;
+}
+
+void RobotMotion::startHalfStep() {
+    currentDiagonalA = nextDiagonalA;
+    issueLift();
+
+    const uint32_t now = millis();
+    // Half-step length is whichever constraint is tighter: legs need
+    // legLiftMs + legDropMs, body needs bodyLeadInMs + actuateMs + bodySettleMs.
+    const uint32_t legSpan  = config.legLiftMs + config.legDropMs;
+    const uint32_t bodySpan = config.bodyLeadInMs + config.actuateMs + config.bodySettleMs;
+    const uint32_t total    = legSpan > bodySpan ? legSpan : bodySpan;
+
+    actuateAtMs   = now + config.bodyLeadInMs;
+    halfStepEndMs = now + total;
+    dropAtMs      = halfStepEndMs - config.legDropMs;
+    actuateIssued = false;
+    dropIssued    = false;
+    phase         = Phase::HalfStep;
+}
+
 void RobotMotion::update() {
-    if (!motion.isIdle()) return;
+    const uint32_t now = millis();
 
-    while (true) {
-        // Wrap up the phase that just completed.
-        switch (phase) {
-            case Phase::Lift:
-                issueActuate();
-                phase = Phase::Actuate;
-                return;
-            case Phase::Actuate:
-                issueDrop();
-                phase = Phase::Drop;
-                return;
-            case Phase::Drop:
-                nextDiagonalA = !currentDiagonalA;
-                phase         = Phase::Idle;
-                if (settling) {
-                    // The settle drop just finished — job is fully done.
-                    settling          = false;
-                    currentJob.action = Action::None;
-                } else {
-                    if (currentJob.remaining > 0)
-                        currentJob.remaining--;
-                    else if (currentJob.remaining < 0)
-                        currentJob.remaining++;
-                    if (currentJob.remaining == 0) {
-                        // Run one more lift / actuate(0) / drop to recenter
-                        // the body actuator while a diagonal is lifted, so a
-                        // subsequent reversal doesn't waste its first half-step.
-                        settling = true;
-                    }
-                }
-                break;
-            case Phase::Pose:
-                phase             = Phase::Idle;
-                currentJob.action = Action::None;
-                break;
-            case Phase::Idle:
-                break;
+    if (phase == Phase::HalfStep) {
+        // Fire the queued sub-motions as their scheduled times arrive.
+        // Signed comparison handles millis() wraparound safely.
+        if (!actuateIssued && (int32_t)(now - actuateAtMs) >= 0) {
+            issueActuate();
+            actuateIssued = true;
         }
+        if (!dropIssued && (int32_t)(now - dropAtMs) >= 0) {
+            issueDrop();
+            dropIssued = true;
+        }
+        if ((int32_t)(now - halfStepEndMs) < 0) return;
 
-        // Decide what to start next.
-        if (currentJob.action == Action::Walk || currentJob.action == Action::Rotate) {
-            currentDiagonalA = nextDiagonalA;
-            issueLift();
-            phase = Phase::Lift;
-            return;
+        // Half-step complete.
+        nextDiagonalA = !currentDiagonalA;
+        if (settling) {
+            settling          = false;
+            currentJob.action = Action::None;
+        } else {
+            if (currentJob.remaining > 0)
+                currentJob.remaining--;
+            else if (currentJob.remaining < 0)
+                currentJob.remaining++;
+            if (currentJob.remaining == 0) {
+                // Run one more lift / actuate(0) / drop to recenter the body
+                // actuator while a diagonal is lifted, so a subsequent reversal
+                // doesn't waste its first half-step.
+                settling = true;
+            }
         }
-        if (queueEmpty()) return;
-        currentJob = queue[head];
-        head       = (head + 1) % kMaxJobs;
-        if (currentJob.action == Action::Crouch || currentJob.action == Action::Stand || currentJob.action == Action::Sit) {
+        phase = Phase::Idle;
+    } else if (phase == Phase::DanceStep) {
+        const ServoId leg = kClockwiseLegs[danceLegIdx & 3];
+        if (!danceDropIssued && (int32_t)(now - danceDropAtMs) >= 0) {
+            motion.moveToFraction(leg, 0.0f, config.legDropMs);
+            danceDropIssued = true;
+        }
+        if ((int32_t)(now - danceStepEndMs) < 0) return;
+        danceLegIdx = (danceLegIdx + 1) & 3;
+        if (currentJob.remaining > 0) currentJob.remaining--;
+        if (currentJob.remaining == 0) currentJob.action = Action::None;
+        phase = Phase::Idle;
+    } else if (phase == Phase::Pose) {
+        if (!motion.isIdle()) return;
+        phase             = Phase::Idle;
+        currentJob.action = Action::None;
+    }
+
+    // Decide what to start next.
+    if (currentJob.action == Action::Walk || currentJob.action == Action::Rotate) {
+        startHalfStep();
+        return;
+    }
+    if (currentJob.action == Action::Dance) {
+        startDanceStep();
+        return;
+    }
+    if (queueEmpty()) return;
+    currentJob = queue[head];
+    head       = (head + 1) % kMaxJobs;
+    switch (currentJob.action) {
+        case Action::Walk:
+        case Action::Rotate:
+            startHalfStep();
+            break;
+        case Action::Dance:
+            danceLegIdx = 0;
+            startDanceStep();
+            break;
+        case Action::Crouch:
+        case Action::Stand:
+        case Action::Sit:
             issuePose(currentJob.action);
             phase = Phase::Pose;
-            return;
-        }
-        // Walk / Rotate: loop back around to issue the lift.
+            break;
+        case Action::None:
+            break;
     }
 }

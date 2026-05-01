@@ -31,6 +31,7 @@ static void printHelp() {
     Serial.println("   c     Crouch");
     Serial.println("   x     Sit (crouch + extra leg lift)");
     Serial.println("   v     Stand (full neutral pose)");
+    Serial.println("   z     Dance (lift each leg clockwise)");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   ?     This help");
@@ -96,10 +97,10 @@ static void handleKey(char c) {
             robotMotion.step(-1);
             break;
         case 'j':
-            robotMotion.rotate(cfg.degreesPerHalfRotation * 2.0f);
+            robotMotion.rotate(-cfg.degreesPerHalfRotation * 2.0f);
             break;
         case 'l':
-            robotMotion.rotate(-cfg.degreesPerHalfRotation * 2.0f);
+            robotMotion.rotate(cfg.degreesPerHalfRotation * 2.0f);
             break;
         case 'x':
             robotMotion.sit();
@@ -109,6 +110,9 @@ static void handleKey(char c) {
             break;
         case 'v':
             robotMotion.stand();
+            break;
+        case 'z':
+            robotMotion.dance();
             break;
 
         // --- Display ---
