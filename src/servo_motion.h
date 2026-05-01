@@ -20,6 +20,8 @@ public:
     explicit ServoMotion(ServoManager& manager) : manager(manager) {}
 
     void moveTo(ServoId id, float angle, uint32_t durationMs, Easing easing = Easing::EaseInOut);
+    void moveToFraction(ServoId id, float fraction, uint32_t durationMs,
+                        Easing easing = Easing::EaseInOut);
     void update();
 
     bool isIdle() const;

@@ -2,19 +2,18 @@
 #include <math.h>
 
 namespace {
-constexpr ServoId kDiagA[2] = {ServoId::RearLeft, ServoId::FrontRight};
-constexpr ServoId kDiagB[2] = {ServoId::FrontLeft, ServoId::RearRight};
+constexpr ServoId kDiagA[2]    = {ServoId::RearLeft, ServoId::FrontRight};
+constexpr ServoId kDiagB[2]    = {ServoId::FrontLeft, ServoId::RearRight};
+constexpr ServoId kAllLegs[4]  = {ServoId::FrontLeft, ServoId::FrontRight,
+                                  ServoId::RearLeft, ServoId::RearRight};
 }  // namespace
 
 RobotMotion::RobotMotion(ServoMotion& m) : motion(m) {}
 
 void RobotMotion::begin() {
-    motion.moveTo(ServoId::FrontLeft, config.legDownFL, config.poseMs);
-    motion.moveTo(ServoId::FrontRight, config.legDownFR, config.poseMs);
-    motion.moveTo(ServoId::RearLeft, config.legDownRL, config.poseMs);
-    motion.moveTo(ServoId::RearRight, config.legDownRR, config.poseMs);
-    motion.moveTo(ServoId::Translation, config.translationNeutral, config.poseMs);
-    motion.moveTo(ServoId::Rotation, config.rotationNeutral, config.poseMs);
+    for (ServoId leg : kAllLegs) motion.moveToFraction(leg, 0.0f, config.poseMs);
+    motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
+    motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
 }
 
 void RobotMotion::enqueue(const Job& j) {
@@ -44,92 +43,35 @@ bool RobotMotion::isIdle() const {
     return phase == Phase::Idle && currentJob.action == Action::None && queueEmpty();
 }
 
-float RobotMotion::legUp(ServoId id) const {
-    switch (id) {
-        case ServoId::FrontLeft:
-            return config.legUpFL;
-        case ServoId::FrontRight:
-            return config.legUpFR;
-        case ServoId::RearLeft:
-            return config.legUpRL;
-        case ServoId::RearRight:
-            return config.legUpRR;
-        default:
-            return 0.0f;
-    }
-}
-
-float RobotMotion::legDown(ServoId id) const {
-    switch (id) {
-        case ServoId::FrontLeft:
-            return config.legDownFL;
-        case ServoId::FrontRight:
-            return config.legDownFR;
-        case ServoId::RearLeft:
-            return config.legDownRL;
-        case ServoId::RearRight:
-            return config.legDownRR;
-        default:
-            return 0.0f;
-    }
-}
-
-float RobotMotion::legCrouch(ServoId id) const {
-    switch (id) {
-        case ServoId::FrontLeft:
-            return config.crouchFL;
-        case ServoId::FrontRight:
-            return config.crouchFR;
-        case ServoId::RearLeft:
-            return config.crouchRL;
-        case ServoId::RearRight:
-            return config.crouchRR;
-        default:
-            return 0.0f;
-    }
-}
-
 void RobotMotion::issueLift() {
     const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
-    motion.moveTo(pair[0], legUp(pair[0]), config.legLiftMs);
-    motion.moveTo(pair[1], legUp(pair[1]), config.legLiftMs);
+    motion.moveToFraction(pair[0], config.liftFraction, config.legLiftMs);
+    motion.moveToFraction(pair[1], config.liftFraction, config.legLiftMs);
 }
 
 void RobotMotion::issueDrop() {
     const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
-    motion.moveTo(pair[0], legDown(pair[0]), config.legDropMs);
-    motion.moveTo(pair[1], legDown(pair[1]), config.legDropMs);
+    motion.moveToFraction(pair[0], 0.0f, config.legDropMs);
+    motion.moveToFraction(pair[1], 0.0f, config.legDropMs);
 }
 
 void RobotMotion::issueActuate() {
-    // sign +1 = forward / left (the "primary" direction), -1 = backward / right.
-    // When diagonalA is lifted, primary direction maps to the primary extreme;
-    // when diagonalB is lifted, the body servo must travel to the opposite
-    // extreme to keep pushing the body the same way.
-    const int sign     = (currentJob.remaining > 0) ? 1 : -1;
-    const bool primary = ((sign > 0) == currentDiagonalA);
-    if (currentJob.action == Action::Walk) {
-        const float angle = primary ? config.translationForward : config.translationBackward;
-        motion.moveTo(ServoId::Translation, angle, config.actuateMs);
-    } else {
-        const float angle = primary ? config.rotationLeft : config.rotationRight;
-        motion.moveTo(ServoId::Rotation, angle, config.actuateMs);
-    }
+    // sign +1 = forward / left (the "primary" job direction), -1 = reverse.
+    // When diagonalA is lifted, primary job direction maps to +actuateFraction;
+    // when diagonalB is lifted the body servo must go the opposite way to keep
+    // pushing the body the same way.
+    const int  sign      = (currentJob.remaining > 0) ? 1 : -1;
+    const float fraction = (((sign > 0) == currentDiagonalA) ? +1.0f : -1.0f) * config.actuateFraction;
+    const ServoId target = (currentJob.action == Action::Walk) ? ServoId::Translation : ServoId::Rotation;
+    motion.moveToFraction(target, fraction, config.actuateMs);
 }
 
 void RobotMotion::issuePose(Action action) {
-    if (action == Action::Crouch) {
-        motion.moveTo(ServoId::FrontLeft, legCrouch(ServoId::FrontLeft), config.poseMs);
-        motion.moveTo(ServoId::FrontRight, legCrouch(ServoId::FrontRight), config.poseMs);
-        motion.moveTo(ServoId::RearLeft, legCrouch(ServoId::RearLeft), config.poseMs);
-        motion.moveTo(ServoId::RearRight, legCrouch(ServoId::RearRight), config.poseMs);
-    } else {
-        motion.moveTo(ServoId::FrontLeft, config.legDownFL, config.poseMs);
-        motion.moveTo(ServoId::FrontRight, config.legDownFR, config.poseMs);
-        motion.moveTo(ServoId::RearLeft, config.legDownRL, config.poseMs);
-        motion.moveTo(ServoId::RearRight, config.legDownRR, config.poseMs);
-        motion.moveTo(ServoId::Translation, config.translationNeutral, config.poseMs);
-        motion.moveTo(ServoId::Rotation, config.rotationNeutral, config.poseMs);
+    const float legFraction = (action == Action::Crouch) ? config.crouchFraction : 0.0f;
+    for (ServoId leg : kAllLegs) motion.moveToFraction(leg, legFraction, config.poseMs);
+    if (action != Action::Crouch) {
+        motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
     }
 }
 

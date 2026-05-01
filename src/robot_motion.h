@@ -13,6 +13,10 @@
 // directions, so the alternation between half-steps is what produces net body
 // motion.
 //
+// Per-servo direction and HW limits live in kServos[] (config.h); pose values
+// here are unitless fractions in [-1, +1] passed to ServoMotion::moveToFraction.
+// 0.0 = restAngle, +1.0 = primary safety limit, -1.0 = the opposite limit.
+//
 // A half-step is: lift one diagonal, drive the body servo to one extreme, drop
 // the diagonal. The next half-step lifts the other diagonal and drives the
 // body servo to the opposite extreme. Two half-steps make one full stride.
@@ -21,32 +25,19 @@
 class RobotMotion {
 public:
     struct Config {
-        // Leg "down" angles (resting on ground) and "up" angles (lifted).
-        // Left- and right-side parallelograms are usually mirrored, so left
-        // legs lift toward higher angles and right legs toward lower ones.
-        float legDownFL = 90.0f, legUpFL = 150.0f;
-        float legDownFR = 90.0f, legUpFR = 30.0f;
-        float legDownRL = 90.0f, legUpRL = 150.0f;
-        float legDownRR = 180.0f, legUpRR = 90.0f;
+        // How far each leg lifts during the gait, as a fraction of its
+        // available range from rest toward the primary limit. 1.0 would lift
+        // to the safety limit; the gait usually wants less than that.
+        float liftFraction = 0.67f;
 
-        // Translation extremes. translationForward is the angle that, while
-        // diagonal A is lifted, moves the robot physically forward; with
-        // diagonal B lifted the opposite extreme is used to keep moving forward.
-        float translationNeutral  = 90.0f;
-        float translationForward  = 130.0f;
-        float translationBackward = 50.0f;
+        // Crouch pose: how far each leg bends in its lift direction. 1.0 =
+        // pinned at the safety limit (the most extreme crouch the HW allows).
+        float crouchFraction = 1.0f;
 
-        // Rotation extremes, by the same convention.
-        float rotationNeutral = 90.0f;
-        float rotationLeft    = 50.0f;
-        float rotationRight   = 130.0f;
-
-        // Crouch pose: per-leg, mirrored like legDown/legUp (left legs go high,
-        // right legs go low). Typically more extreme than the lift angles.
-        float crouchFL = 180.0f;
-        float crouchFR = 0.0f;
-        float crouchRL = 180.0f;
-        float crouchRR = 0.0f;
+        // Body servo amplitude during a half-step actuation. Translation goes
+        // ±actuateFraction to step forward/backward; Rotation does the same
+        // for left/right.
+        float actuateFraction = 0.44f;
 
         // Approximate yaw produced by one rotation half-step. Used to convert
         // rotate(degrees) into a half-step count; tune to your geometry.
@@ -113,8 +104,4 @@ private:
     void issueActuate();
     void issueDrop();
     void issuePose(Action action);
-
-    float legUp(ServoId id) const;
-    float legDown(ServoId id) const;
-    float legCrouch(ServoId id) const;
 };

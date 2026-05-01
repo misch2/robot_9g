@@ -31,6 +31,10 @@ void ServoMotion::moveTo(ServoId id, float angle, uint32_t durationMs, Easing ea
     m.active      = true;
 }
 
+void ServoMotion::moveToFraction(ServoId id, float fraction, uint32_t durationMs, Easing easing) {
+    moveTo(id, manager.fractionToAngle(id, fraction), durationMs, easing);
+}
+
 void ServoMotion::update() {
     uint32_t now = millis();
     for (size_t i = 0; i < kCount; i++) {

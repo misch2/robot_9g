@@ -44,46 +44,46 @@ static void handleKey(char c) {
     switch (c) {
         // --- Direct leg control ---
         case 'q':
-            servoMotion.moveTo(ServoId::FrontLeft, cfg.legUpFL, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontLeft, cfg.liftFraction, kDirectMoveMs);
             break;
         case 'a':
-            servoMotion.moveTo(ServoId::FrontLeft, cfg.legDownFL, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontLeft, 0.0f, kDirectMoveMs);
             break;
         case 'w':
-            servoMotion.moveTo(ServoId::FrontRight, cfg.legUpFR, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontRight, cfg.liftFraction, kDirectMoveMs);
             break;
         case 's':
-            servoMotion.moveTo(ServoId::FrontRight, cfg.legDownFR, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontRight, 0.0f, kDirectMoveMs);
             break;
         case 'e':
-            servoMotion.moveTo(ServoId::RearLeft, cfg.legUpRL, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearLeft, cfg.liftFraction, kDirectMoveMs);
             break;
         case 'd':
-            servoMotion.moveTo(ServoId::RearLeft, cfg.legDownRL, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearLeft, 0.0f, kDirectMoveMs);
             break;
         case 'r':
-            servoMotion.moveTo(ServoId::RearRight, cfg.legUpRR, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearRight, cfg.liftFraction, kDirectMoveMs);
             break;
         case 'f':
-            servoMotion.moveTo(ServoId::RearRight, cfg.legDownRR, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearRight, 0.0f, kDirectMoveMs);
             break;
 
         // --- Direct body-actuator control ---
         case 't':
-            servoMotion.moveTo(ServoId::Translation, cfg.translationForward, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, +cfg.actuateFraction, kDirectMoveMs);
             break;
         case 'g':
-            servoMotion.moveTo(ServoId::Translation, cfg.translationBackward, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, -cfg.actuateFraction, kDirectMoveMs);
             break;
         case 'y':
-            servoMotion.moveTo(ServoId::Rotation, cfg.rotationLeft, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Rotation, +cfg.actuateFraction, kDirectMoveMs);
             break;
         case 'h':
-            servoMotion.moveTo(ServoId::Rotation, cfg.rotationRight, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, kDirectMoveMs);
             break;
         case 'b':
-            servoMotion.moveTo(ServoId::Translation, cfg.translationNeutral, kDirectMoveMs);
-            servoMotion.moveTo(ServoId::Rotation, cfg.rotationNeutral, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Rotation, 0.0f, kDirectMoveMs);
             break;
 
         // --- Queued whole-robot movements ---
@@ -134,12 +134,6 @@ void setup() {
     Serial.println("Starting...");
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
 
-    servoManager.addServo(ServoId::FrontLeft, PIN_SERVO_1, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180, 90);
-    servoManager.addServo(ServoId::FrontRight, PIN_SERVO_2, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180, 90);
-    servoManager.addServo(ServoId::RearLeft, PIN_SERVO_3, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180, 90);
-    servoManager.addServo(ServoId::RearRight, PIN_SERVO_4, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 90, 180, 90);
-    servoManager.addServo(ServoId::Rotation, PIN_SERVO_5, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180, 90);
-    servoManager.addServo(ServoId::Translation, PIN_SERVO_6, SERVO_MIN_PULSE, SERVO_MAX_PULSE, 0, 180, 90);
     servoManager.begin();
     robotMotion.begin();
 

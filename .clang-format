@@ -13,3 +13,4 @@ AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: false
   AcrossComments: false
+AlignArrayOfStructures: Left   # Left or Right
