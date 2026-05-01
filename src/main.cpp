@@ -162,5 +162,19 @@ void loop() {
     processSerialInput();
     servoMotion.update();
     robotMotion.update();
+
+    // Show a Concentrating face while the robot is moving; restore the
+    // prior expression once idle. Edge-detected so we don't fight 'm'.
+    static bool wasIdle                            = true;
+    static RobotFace::Expression preMoveExpression = RobotFace::Expression::Happy;
+    bool idle                                      = robotMotion.isIdle();
+    if (wasIdle && !idle) {
+        preMoveExpression = robotFace.getExpression();
+        robotFace.setExpression(RobotFace::Expression::Concentrating);
+    } else if (!wasIdle && idle) {
+        robotFace.setExpression(preMoveExpression);
+    }
+    wasIdle = idle;
+
     robotFace.update();
 }
