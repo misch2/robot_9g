@@ -46,7 +46,7 @@ public:
         // Phase durations (ms).
         uint32_t legLiftMs = 200;
         uint32_t actuateMs = 350;
-        uint32_t legDropMs = 200;
+        uint32_t legDropMs = 400;  // 200;
         uint32_t poseMs    = 400;
     };
 

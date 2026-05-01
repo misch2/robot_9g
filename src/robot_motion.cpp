@@ -2,15 +2,16 @@
 #include <math.h>
 
 namespace {
-constexpr ServoId kDiagA[2]    = {ServoId::RearLeft, ServoId::FrontRight};
-constexpr ServoId kDiagB[2]    = {ServoId::FrontLeft, ServoId::RearRight};
-constexpr ServoId kAllLegs[4]  = {ServoId::FrontLeft, ServoId::FrontRight,
-                                  ServoId::RearLeft, ServoId::RearRight};
+constexpr ServoId kDiagA[2]   = {ServoId::RearLeft, ServoId::FrontRight};
+constexpr ServoId kDiagB[2]   = {ServoId::FrontLeft, ServoId::RearRight};
+constexpr ServoId kAllLegs[4] = {ServoId::FrontLeft, ServoId::FrontRight,
+                                 ServoId::RearLeft, ServoId::RearRight};
 }  // namespace
 
 RobotMotion::RobotMotion(ServoMotion& m) : motion(m) {}
 
 void RobotMotion::begin() {
+    // FIXME use "rest" position, is it really always 0.0f? Maybe add a helper in ServoMotion to convert from fraction to angle using the ServoSpec?
     for (ServoId leg : kAllLegs) motion.moveToFraction(leg, 0.0f, config.poseMs);
     motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
     motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
@@ -60,7 +61,7 @@ void RobotMotion::issueActuate() {
     // When diagonalA is lifted, primary job direction maps to +actuateFraction;
     // when diagonalB is lifted the body servo must go the opposite way to keep
     // pushing the body the same way.
-    const int  sign      = (currentJob.remaining > 0) ? 1 : -1;
+    const int sign       = (currentJob.remaining > 0) ? 1 : -1;
     const float fraction = (((sign > 0) == currentDiagonalA) ? +1.0f : -1.0f) * config.actuateFraction;
     const ServoId target = (currentJob.action == Action::Walk) ? ServoId::Translation : ServoId::Rotation;
     motion.moveToFraction(target, fraction, config.actuateMs);

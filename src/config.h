@@ -26,6 +26,7 @@ enum class ServoId : uint8_t {
 // servos that swing both ways from rest).
 struct ServoSpec {
     ServoId id;
+    const char* name;
     int pin;
     int minAngle, maxAngle;
     float restAngle;
@@ -34,12 +35,12 @@ struct ServoSpec {
 
 constexpr ServoSpec kServos[] = {
     //                                  min, max, rest,  direction
-    {ServoId::FrontLeft,   PIN_SERVO_1, 0,  90,  0.0f,   +1}, // lifts up
-    {ServoId::FrontRight,  PIN_SERVO_2, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
-    {ServoId::RearLeft,    PIN_SERVO_3, 0,  90,  0.0f,   +1}, // lifts up
-    {ServoId::RearRight,   PIN_SERVO_4, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
-    {ServoId::Rotation,    PIN_SERVO_5, 45, 135, 90.0f,  -1}, // primary = left
-    {ServoId::Translation, PIN_SERVO_6, 25, 155, 90.0f,  +1}, // primary = forward
+    {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  90,  0.0f,   +1}, // lifts up
+    {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
+    {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  0.0f,   +1}, // lifts up
+    {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 180.0f, -1}, // rests at upper limit, lifts down
+    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 45, 135, 90.0f,  -1}, // primary = left
+    {ServoId::Translation, "Translation", PIN_SERVO_6, 25, 155, 90.0f,  +1}, // primary = forward
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),

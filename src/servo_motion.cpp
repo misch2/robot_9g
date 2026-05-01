@@ -3,10 +3,16 @@
 namespace {
 float applyEasing(Easing e, float t) {
     switch (e) {
-        case Easing::Linear:    return t;
-        case Easing::EaseIn:    return t * t;
-        case Easing::EaseOut:   { float u = 1.0f - t; return 1.0f - u * u; }
-        case Easing::EaseInOut: return t < 0.5f ? 2.0f * t * t : 1.0f - 2.0f * (1.0f - t) * (1.0f - t);
+        case Easing::Linear:
+            return t;
+        case Easing::EaseIn:
+            return t * t;
+        case Easing::EaseOut: {
+            float u = 1.0f - t;
+            return 1.0f - u * u;
+        }
+        case Easing::EaseInOut:
+            return t < 0.5f ? 2.0f * t * t : 1.0f - 2.0f * (1.0f - t) * (1.0f - t);
     }
     return t;
 }
@@ -22,13 +28,16 @@ void ServoMotion::moveTo(ServoId id, float angle, uint32_t durationMs, Easing ea
         return;
     }
 
-    Motion& m  = motions[i];
+    Motion& m     = motions[i];
     m.startAngle  = manager.getCurrentAngle(id);
     m.targetAngle = angle;
     m.startMs     = millis();
     m.durationMs  = durationMs;
     m.easing      = easing;
     m.active      = true;
+
+    const ServoSpec& spec = kServos[i];
+    Serial.printf("Motion request: %s (%d) -> %.1f° over %u ms (easing %u)\n", spec.name, (int)id, angle, durationMs, (unsigned)easing);
 }
 
 void ServoMotion::moveToFraction(ServoId id, float fraction, uint32_t durationMs, Easing easing) {
@@ -41,7 +50,7 @@ void ServoMotion::update() {
         Motion& m = motions[i];
         if (!m.active) continue;
 
-        ServoId id = static_cast<ServoId>(i);
+        ServoId id       = static_cast<ServoId>(i);
         uint32_t elapsed = now - m.startMs;
         if (elapsed >= m.durationMs) {
             manager.setAngle(id, m.targetAngle);

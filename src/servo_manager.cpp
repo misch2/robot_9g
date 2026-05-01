@@ -48,6 +48,6 @@ float ServoManager::fractionToAngle(ServoId id, float fraction) const {
     const ServoSpec& spec = kServos[index];
     // +fraction goes toward primary limit; -fraction toward the opposite.
     const bool towardPositiveLimit = (fraction >= 0) == (spec.primaryDirection > 0);
-    const int  limit               = towardPositiveLimit ? spec.maxAngle : spec.minAngle;
+    const int limit                = towardPositiveLimit ? spec.maxAngle : spec.minAngle;
     return spec.restAngle + fabsf(fraction) * ((float)limit - spec.restAngle);
 }

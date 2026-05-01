@@ -68,8 +68,8 @@ void Servo::setAngle(float angle) {
     int us        = angleToMicroseconds(clamped);
     if (us != lastPulseUs) {
         uint32_t duty = pulseToDuty(us);
-        Serial.printf("Servo: setAngle pin=%d ch=%u angle=%.1f -> %dus (duty=%u)\n",
-                      pinNumber, (unsigned)ledcChannel, clamped, us, (unsigned)duty);
+        // Serial.printf("Servo: setAngle pin=%d ch=%u angle=%.1f -> %dus (duty=%u)\n",
+        //               pinNumber, (unsigned)ledcChannel, clamped, us, (unsigned)duty);
         lastPulseUs = us;
     }
     writeMicroseconds(us);
