@@ -74,6 +74,21 @@ float RobotMotion::legDown(ServoId id) const {
     }
 }
 
+float RobotMotion::legCrouch(ServoId id) const {
+    switch (id) {
+        case ServoId::FrontLeft:
+            return config.crouchFL;
+        case ServoId::FrontRight:
+            return config.crouchFR;
+        case ServoId::RearLeft:
+            return config.crouchRL;
+        case ServoId::RearRight:
+            return config.crouchRR;
+        default:
+            return 0.0f;
+    }
+}
+
 void RobotMotion::issueLift() {
     const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
     motion.moveTo(pair[0], legUp(pair[0]), config.legLiftMs);
@@ -104,10 +119,10 @@ void RobotMotion::issueActuate() {
 
 void RobotMotion::issuePose(Action action) {
     if (action == Action::Crouch) {
-        motion.moveTo(ServoId::FrontLeft, config.crouchAngle, config.poseMs);
-        motion.moveTo(ServoId::FrontRight, config.crouchAngle, config.poseMs);
-        motion.moveTo(ServoId::RearLeft, config.crouchAngle, config.poseMs);
-        motion.moveTo(ServoId::RearRight, config.crouchAngle, config.poseMs);
+        motion.moveTo(ServoId::FrontLeft, legCrouch(ServoId::FrontLeft), config.poseMs);
+        motion.moveTo(ServoId::FrontRight, legCrouch(ServoId::FrontRight), config.poseMs);
+        motion.moveTo(ServoId::RearLeft, legCrouch(ServoId::RearLeft), config.poseMs);
+        motion.moveTo(ServoId::RearRight, legCrouch(ServoId::RearRight), config.poseMs);
     } else {
         motion.moveTo(ServoId::FrontLeft, config.legDownFL, config.poseMs);
         motion.moveTo(ServoId::FrontRight, config.legDownFR, config.poseMs);

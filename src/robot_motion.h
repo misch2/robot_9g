@@ -27,7 +27,7 @@ public:
         float legDownFL = 90.0f, legUpFL = 150.0f;
         float legDownFR = 90.0f, legUpFR = 30.0f;
         float legDownRL = 90.0f, legUpRL = 150.0f;
-        float legDownRR = 90.0f, legUpRR = 30.0f;
+        float legDownRR = 180.0f, legUpRR = 90.0f;
 
         // Translation extremes. translationForward is the angle that, while
         // diagonal A is lifted, moves the robot physically forward; with
@@ -41,8 +41,12 @@ public:
         float rotationLeft    = 50.0f;
         float rotationRight   = 130.0f;
 
-        // Crouch pose: all four legs to this angle.
-        float crouchAngle = 60.0f;
+        // Crouch pose: per-leg, mirrored like legDown/legUp (left legs go high,
+        // right legs go low). Typically more extreme than the lift angles.
+        float crouchFL = 180.0f;
+        float crouchFR = 0.0f;
+        float crouchRL = 180.0f;
+        float crouchRR = 0.0f;
 
         // Approximate yaw produced by one rotation half-step. Used to convert
         // rotate(degrees) into a half-step count; tune to your geometry.
@@ -112,4 +116,5 @@ private:
 
     float legUp(ServoId id) const;
     float legDown(ServoId id) const;
+    float legCrouch(ServoId id) const;
 };
