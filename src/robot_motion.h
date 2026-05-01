@@ -60,6 +60,7 @@ public:
     // Queued commands. Negative values reverse direction.
     void step(int fullSteps);    // +1 = one full stride forward
     void rotate(float degrees);  // + = left, - = right
+    void sit();
     void crouch();
     void stand();
 
@@ -71,6 +72,7 @@ private:
                                   Walk,
                                   Rotate,
                                   Crouch,
+                                  Sit,
                                   Stand };
     enum class Phase : uint8_t { Idle,
                                  Lift,

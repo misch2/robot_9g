@@ -37,6 +37,7 @@ void RobotMotion::rotate(float degrees) {
     enqueue({Action::Rotate, halfSteps});
 }
 
+void RobotMotion::sit() { enqueue({Action::Sit, 0}); }
 void RobotMotion::crouch() { enqueue({Action::Crouch, 0}); }
 void RobotMotion::stand() { enqueue({Action::Stand, 0}); }
 
@@ -68,6 +69,17 @@ void RobotMotion::issueActuate() {
 }
 
 void RobotMotion::issuePose(Action action) {
+    if (action == Action::Sit) {
+        // Sit = back on the ground, front raised. Only the front legs lift the body; the rear legs just tuck under it. Translation and rotation are neutral.
+        motion.moveToFraction(ServoId::RearLeft, +1.0f, config.poseMs);
+        motion.moveToFraction(ServoId::RearRight, +1.0f, config.poseMs);
+        motion.moveToFraction(ServoId::FrontLeft, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::FrontRight, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
+        return;
+    }
+
     const float legFraction = (action == Action::Crouch) ? config.crouchFraction : 0.0f;
     for (ServoId leg : kAllLegs) motion.moveToFraction(leg, legFraction, config.poseMs);
     if (action != Action::Crouch) {
@@ -117,7 +129,7 @@ void RobotMotion::update() {
         if (queueEmpty()) return;
         currentJob = queue[head];
         head       = (head + 1) % kMaxJobs;
-        if (currentJob.action == Action::Crouch || currentJob.action == Action::Stand) {
+        if (currentJob.action == Action::Crouch || currentJob.action == Action::Stand || currentJob.action == Action::Sit) {
             issuePose(currentJob.action);
             phase = Phase::Pose;
             return;

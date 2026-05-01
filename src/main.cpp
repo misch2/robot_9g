@@ -29,6 +29,7 @@ static void printHelp() {
     Serial.println("   i / k Step forward / backward (one full stride)");
     Serial.println("   j / l Rotate left / right (~degreesPerHalfRotation x 2)");
     Serial.println("   c     Crouch");
+    Serial.println("   x     Sit (crouch + extra leg lift)");
     Serial.println("   v     Stand (full neutral pose)");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
@@ -99,6 +100,9 @@ static void handleKey(char c) {
             break;
         case 'l':
             robotMotion.rotate(-cfg.degreesPerHalfRotation * 2.0f);
+            break;
+        case 'x':
+            robotMotion.sit();
             break;
         case 'c':
             robotMotion.crouch();
