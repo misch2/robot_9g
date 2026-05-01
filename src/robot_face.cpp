@@ -18,7 +18,10 @@ constexpr uint32_t kBlinkMaxGapMs = 10000;  // 5500;
 constexpr uint32_t kLookMinGapMs = 1500;
 constexpr uint32_t kLookMaxGapMs = 4500;
 constexpr float kPupilDrift      = 12.0f;  // 6.0f;   // px max offset from center
-constexpr float kPupilEase       = 1.0;    //   0.15f;  // per-frame lerp factor
+constexpr float kPupilEase       = 0.7f;   //   0.15f;  // per-frame lerp factor, higher is snappier but more jittery
+
+// Mouth/brow stroke thickness (for arc and line drawing).
+constexpr int kArcThickness = 6;
 }  // namespace
 
 RobotFace::RobotFace() = default;
@@ -30,26 +33,66 @@ void RobotFace::begin() {
 
     leftEye.setColorDepth(16);
     rightEye.setColorDepth(16);
-    if (!leftEye.createSprite(kEyeSpriteSize, kEyeSpriteSize) ||
-        !rightEye.createSprite(kEyeSpriteSize, kEyeSpriteSize)) {
+    if (!leftEye.createSprite(kEyeSpriteW, kEyeSpriteH) ||
+        !rightEye.createSprite(kEyeSpriteW, kEyeSpriteH)) {
         Serial.println("RobotFace: eye sprite allocation failed");
     }
-
-    // Mouth is static; draw once directly on the TFT. The eye sprites
-    // never overlap this region so they won't disturb it.
-    int mouthX = (TFT_WIDTH - kMouthW) / 2;
-    tft.fillSmoothRoundRect(mouthX, kMouthY, kMouthW, kMouthH, kMouthH / 2, kMouthColor, kBgColor);
 
     randomSeed((unsigned long)micros());
     uint32_t now = millis();
     scheduleNextBlink(now);
     scheduleNextLook(now);
+    // expressionDirty starts true so the first update() draws the mouth
+    // and forces an initial eye render.
+}
+
+void RobotFace::setExpression(Expression e) {
+    if (e == expression) return;
+    expression      = e;
+    expressionDirty = true;
+}
+
+void RobotFace::cycleExpression() {
+    int next = (int)expression + 1;
+    if (next >= (int)Expression::_Count) next = 0;
+    setExpression((Expression)next);
+}
+
+const char* RobotFace::expressionName(Expression e) {
+    switch (e) {
+        case Expression::Happy:
+            return "Happy";
+        case Expression::Neutral:
+            return "Neutral";
+        case Expression::Curious:
+            return "Curious";
+        case Expression::Concentrating:
+            return "Concentrating";
+        case Expression::Worried:
+            return "Worried";
+        case Expression::Sad:
+            return "Sad";
+        case Expression::Surprised:
+            return "Surprised";
+        default:
+            return "?";
+    }
 }
 
 void RobotFace::update() {
     uint32_t now = millis();
     if (now - lastUpdateMs < (uint32_t)DISPLAY_REFRESH_MS) return;
     lastUpdateMs = now;
+
+    // --- Expression change: redraw the static mouth and force eye redraw
+    // (eyebrows live inside the eye sprite, so they refresh with the eyes).
+    if (expressionDirty) {
+        drawMouth();
+        lastOpenness    = -1.0f;
+        lastPupilDX     = 999;
+        lastPupilDY     = 999;
+        expressionDirty = false;
+    }
 
     // --- Blink state machine: 1.0 = fully open, 0.0 = fully closed.
     if (!blinking && now >= nextBlinkMs) {
@@ -86,16 +129,16 @@ void RobotFace::update() {
     lastPupilDX  = pdx;
     lastPupilDY  = pdy;
 
-    drawEye(leftEye, openness, pdx, pdy);
-    drawEye(rightEye, openness, pdx, pdy);
-    leftEye.pushSprite(kLeftEyeX - kEyeSpriteSize / 2, kEyeCenterY - kEyeSpriteSize / 2);
-    rightEye.pushSprite(kRightEyeX - kEyeSpriteSize / 2, kEyeCenterY - kEyeSpriteSize / 2);
+    drawEye(leftEye, /*isLeft=*/true, openness, pdx, pdy);
+    drawEye(rightEye, /*isLeft=*/false, openness, pdx, pdy);
+    leftEye.pushSprite(kLeftEyeX - kEyeSpriteW / 2, kEyeCenterY - kEyeRelCenterY);
+    rightEye.pushSprite(kRightEyeX - kEyeSpriteW / 2, kEyeCenterY - kEyeRelCenterY);
 }
 
-void RobotFace::drawEye(TFT_eSprite& s, float openness, int pdx, int pdy) {
+void RobotFace::drawEye(TFT_eSprite& s, bool isLeft, float openness, int pdx, int pdy) {
     s.fillSprite(kBgColor);
-    int cx = kEyeSpriteSize / 2;
-    int cy = kEyeSpriteSize / 2;
+    int cx = kEyeSpriteW / 2;
+    int cy = kEyeRelCenterY;
 
     // The eyelid squashes the eye vertically. Width is fixed; height is
     // 2*ry. fillSmoothRoundRect with corner radius == ry gives a circle at
@@ -109,6 +152,155 @@ void RobotFace::drawEye(TFT_eSprite& s, float openness, int pdx, int pdy) {
     if (openness > 0.4f) {
         s.fillSmoothCircle(cx + pdx, cy + pdy, kPupilRadius, kPupilColor, kEyeColor);
         s.fillSmoothCircle(cx + pdx - 4, cy + pdy - 4, 3, kHighlight, kPupilColor);
+    }
+
+    drawBrow(s, isLeft);
+}
+
+void RobotFace::drawBrow(TFT_eSprite& s, bool isLeft) {
+    // The eyebrow is a thick line above the eye. Two parameters control
+    // its pose: innerLift (positive raises the inner end → worried/sad,
+    // negative raises the outer end → relaxed/happy) and baseLift
+    // (positive raises the whole brow → surprised, negative lowers it →
+    // concentrating). Inner == nasal end; outer == temple end. Which is
+    // which on screen flips between left and right eye.
+    constexpr int kBaseY   = 20;
+    constexpr int kHalfLen = 22;
+    constexpr float kThick = 5.0f;
+
+    float innerLift = 0.0f;
+    float baseLift  = 0.0f;
+
+    switch (expression) {
+        case Expression::Happy:
+            innerLift = -2.0f;  // outer slightly higher → relaxed arch
+            break;
+        case Expression::Neutral:
+            break;
+        case Expression::Curious:
+            // Asymmetric: only the left brow lifts.
+            baseLift = isLeft ? 6.0f : 0.0f;
+            break;
+        case Expression::Concentrating:
+            innerLift = -4.0f;  // V-shape (inner ends down)
+            baseLift  = -2.0f;  // and lowered
+            break;
+        case Expression::Worried:
+            innerLift = +5.0f;  // ^-shape (inner ends up)
+            break;
+        case Expression::Sad:
+            innerLift = +6.0f;
+            baseLift  = -1.0f;
+            break;
+        case Expression::Surprised:
+            baseLift = +6.0f;  // raised, flat
+            break;
+        default:
+            break;
+    }
+
+    int cx        = kEyeSpriteW / 2;
+    int browY     = kBaseY - (int)lroundf(baseLift);
+    int innerEndX = isLeft ? (cx + kHalfLen) : (cx - kHalfLen);
+    int outerEndX = isLeft ? (cx - kHalfLen) : (cx + kHalfLen);
+    int innerEndY = browY - (int)lroundf(innerLift);
+    int outerEndY = browY;
+
+    s.drawWideLine(outerEndX, outerEndY, innerEndX, innerEndY,
+                   kThick, kEyeColor, kBgColor);
+}
+
+void RobotFace::drawMouth() {
+    // Clear the mouth bounding box so the previous expression's pixels go.
+    int boxX = kMouthCenterX - kMouthBoxW / 2;
+    int boxY = kMouthCenterY - kMouthBoxH / 2;
+    tft.fillRect(boxX, boxY, kMouthBoxW, kMouthBoxH, kBgColor);
+
+    // drawSmoothArc angle convention: 0° is at 6 o'clock (south) and
+    // angles increase clockwise (so 90°=west, 180°=north, 270°=east).
+    // - Smile = arc near angle 0°, circle center ABOVE the mouth.
+    //   That range straddles 0/360, so we draw it as two halves.
+    // - Frown = arc near angle 180°, circle center BELOW the mouth.
+    //   Single non-wrapping draw.
+
+    switch (expression) {
+        case Expression::Happy: {
+            // Big pronounced smile.
+            int r      = 45;
+            int cx     = kMouthCenterX;
+            int cy     = kMouthCenterY - 27;  // circle center above mouth
+            int spread = 55;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              360 - spread, 360, kMouthColor, kBgColor);
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              0, spread, kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Neutral: {
+            // Very subtle smile (large radius, small spread = gentle curve).
+            int r      = 100;
+            int cx     = kMouthCenterX;
+            int cy     = kMouthCenterY - 95;
+            int spread = 14;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              360 - spread, 360, kMouthColor, kBgColor);
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              0, spread, kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Curious: {
+            // Slight smile, shifted right for an asymmetric look.
+            int r      = 80;
+            int cx     = kMouthCenterX + 6;
+            int cy     = kMouthCenterY - 67;
+            int spread = 22;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              360 - spread, 360, kMouthColor, kBgColor);
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              0, spread, kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Concentrating: {
+            // Flat tight line.
+            int w = 50, h = 6;
+            tft.fillSmoothRoundRect(kMouthCenterX - w / 2,
+                                    kMouthCenterY - h / 2,
+                                    w, h, h / 2, kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Worried: {
+            // Subtle frown.
+            int r      = 60;
+            int cx     = kMouthCenterX;
+            int cy     = kMouthCenterY + 45;  // circle center below mouth
+            int spread = 35;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              180 - spread, 180 + spread,
+                              kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Sad: {
+            // Deeper, wider frown.
+            int r      = 50;
+            int cx     = kMouthCenterX;
+            int cy     = kMouthCenterY + 38;
+            int spread = 55;
+            tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
+                              180 - spread, 180 + spread,
+                              kMouthColor, kBgColor);
+            break;
+        }
+        case Expression::Surprised: {
+            // Open round mouth (ring shape).
+            int r = 12;
+            tft.fillSmoothCircle(kMouthCenterX, kMouthCenterY, r,
+                                 kMouthColor, kBgColor);
+            tft.fillSmoothCircle(kMouthCenterX, kMouthCenterY, r - 5,
+                                 kBgColor, kMouthColor);
+            break;
+        }
+        default:
+            break;
     }
 }
 
