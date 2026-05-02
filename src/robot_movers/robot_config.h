@@ -41,6 +41,15 @@ struct RobotConfig {
 
     // Dance: how long each leg holds at the top before dropping back down.
     uint32_t danceHoldMs = 50;  // 120;
+
+    // Global speed modifier applied to every motion duration. 1.0 = normal,
+    // 0.5 = half speed (everything takes twice as long), 2.0 = double speed.
+    // Useful for slowing the whole robot down during debugging. Must be > 0.
+    float speedFactor = 1.0f;
+
+    // Scale a duration by speedFactor. Centralised so every mover and the
+    // direct-keypress handler slow down uniformly when speedFactor changes.
+    uint32_t scaled(uint32_t ms) const { return (uint32_t)(ms / speedFactor); }
 };
 
 // Common fraction shorthands used across movers.

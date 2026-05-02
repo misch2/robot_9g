@@ -40,7 +40,7 @@ constexpr ServoSpec kServos[] = {
     {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  90.0f,  -1}, // rest = standing (extended); primary = foot up (toward 0)
     {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 90.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
     {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 10, 100, 100.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
-    {ServoId::Translation, "Translation", PIN_SERVO_6, 10, 170, 90.0f,  +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
+    {ServoId::Translation, "Translation", PIN_SERVO_6, 10, 150, 80.0f,  +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),

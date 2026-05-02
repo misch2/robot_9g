@@ -47,46 +47,46 @@ static void handleKey(char c) {
     switch (c) {
         // --- Direct leg control ---
         case 'q':
-            servoMotion.moveToFraction(ServoId::FrontLeft, cfg.liftFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontLeft, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'a':
-            servoMotion.moveToFraction(ServoId::FrontLeft, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontLeft, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'w':
-            servoMotion.moveToFraction(ServoId::FrontRight, cfg.liftFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontRight, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 's':
-            servoMotion.moveToFraction(ServoId::FrontRight, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::FrontRight, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'e':
-            servoMotion.moveToFraction(ServoId::RearLeft, cfg.liftFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearLeft, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'd':
-            servoMotion.moveToFraction(ServoId::RearLeft, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearLeft, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'r':
-            servoMotion.moveToFraction(ServoId::RearRight, cfg.liftFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearRight, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'f':
-            servoMotion.moveToFraction(ServoId::RearRight, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::RearRight, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
         // --- Direct body-actuator control ---
         case 't':
-            servoMotion.moveToFraction(ServoId::Translation, +cfg.actuateFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, +cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'g':
-            servoMotion.moveToFraction(ServoId::Translation, -cfg.actuateFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, -cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'y':
-            servoMotion.moveToFraction(ServoId::Rotation, +cfg.actuateFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Rotation, +cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'h':
-            servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'b':
-            servoMotion.moveToFraction(ServoId::Translation, 0.0f, kDirectMoveMs);
-            servoMotion.moveToFraction(ServoId::Rotation, 0.0f, kDirectMoveMs);
+            servoMotion.moveToFraction(ServoId::Translation, 0.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::Rotation, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
         // --- Queued whole-robot movements ---
@@ -157,7 +157,7 @@ void setup() {
     robotMotion.begin();
     // FIXME tweaking:
     robotMotion.config.liftFraction = 1.0f;
-
+    robotMotion.config.speedFactor  = 0.1f;  // 10x slower for debugging
 
     printHelp();
 }

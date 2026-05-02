@@ -18,9 +18,9 @@ void DanceMover::start(int legSteps) {
 
 void DanceMover::beginLegStep(uint32_t now) {
     const ServoId leg = kClockwiseLegs[legIdx & 3];
-    motion.moveToFraction(leg, config.liftFraction, config.legLiftMs);
-    dropAtMs   = now + config.legLiftMs + config.danceHoldMs;
-    stepEndMs  = dropAtMs + config.legDropMs;
+    motion.moveToFraction(leg, config.liftFraction, config.scaled(config.legLiftMs));
+    dropAtMs   = now + config.scaled(config.legLiftMs) + config.scaled(config.danceHoldMs);
+    stepEndMs  = dropAtMs + config.scaled(config.legDropMs);
     dropIssued = false;
 }
 
@@ -29,7 +29,7 @@ bool DanceMover::update(uint32_t now) {
 
     const ServoId leg = kClockwiseLegs[legIdx & 3];
     if (!dropIssued && (int32_t)(now - dropAtMs) >= 0) {
-        motion.moveToFraction(leg, fractionBalanced, config.legDropMs);
+        motion.moveToFraction(leg, fractionBalanced, config.scaled(config.legDropMs));
         dropIssued = true;
     }
     if ((int32_t)(now - stepEndMs) < 0) return false;

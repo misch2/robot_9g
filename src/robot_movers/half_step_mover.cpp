@@ -22,13 +22,13 @@ void HalfStepMover::beginHalfStep(uint32_t now) {
 
     // Half-step length is whichever constraint is tighter: legs need
     // legLiftMs + legDropMs, body needs bodyLeadInMs + actuateMs + bodySettleMs.
-    const uint32_t legSpan  = config.legLiftMs + config.legDropMs;
-    const uint32_t bodySpan = config.bodyLeadInMs + config.actuateMs + config.bodySettleMs;
+    const uint32_t legSpan  = config.scaled(config.legLiftMs) + config.scaled(config.legDropMs);
+    const uint32_t bodySpan = config.scaled(config.bodyLeadInMs) + config.scaled(config.actuateMs) + config.scaled(config.bodySettleMs);
     const uint32_t total    = legSpan > bodySpan ? legSpan : bodySpan;
 
-    actuateAtMs   = now + config.bodyLeadInMs;
+    actuateAtMs   = now + config.scaled(config.bodyLeadInMs);
     halfStepEndMs = now + total;
-    dropAtMs      = halfStepEndMs - config.legDropMs;
+    dropAtMs      = halfStepEndMs - config.scaled(config.legDropMs);
     actuateIssued = false;
     dropIssued    = false;
 }
@@ -73,15 +73,17 @@ bool HalfStepMover::update(uint32_t now) {
 }
 
 void HalfStepMover::issueLift() {
-    const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
-    motion.moveToFraction(pair[0], config.liftFraction, config.legLiftMs);
-    motion.moveToFraction(pair[1], config.liftFraction, config.legLiftMs);
+    const ServoId* pair  = currentDiagonalA ? kDiagA : kDiagB;
+    const uint32_t durMs = config.scaled(config.legLiftMs);
+    motion.moveToFraction(pair[0], config.liftFraction, durMs);
+    motion.moveToFraction(pair[1], config.liftFraction, durMs);
 }
 
 void HalfStepMover::issueDrop() {
-    const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
-    motion.moveToFraction(pair[0], fractionBalanced, config.legDropMs);
-    motion.moveToFraction(pair[1], fractionBalanced, config.legDropMs);
+    const ServoId* pair  = currentDiagonalA ? kDiagA : kDiagB;
+    const uint32_t durMs = config.scaled(config.legDropMs);
+    motion.moveToFraction(pair[0], fractionBalanced, durMs);
+    motion.moveToFraction(pair[1], fractionBalanced, durMs);
 }
 
 void HalfStepMover::issueActuate() {
@@ -98,5 +100,5 @@ void HalfStepMover::issueActuate() {
         const int sign = (remaining > 0) ? 1 : -1;
         fraction       = (((sign > 0) == currentDiagonalA) ? fractionMax : fractionMin) * config.actuateFraction;
     }
-    motion.moveToFraction(bodyServo, fraction, config.actuateMs);
+    motion.moveToFraction(bodyServo, fraction, config.scaled(config.actuateMs));
 }
