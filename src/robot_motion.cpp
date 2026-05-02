@@ -21,9 +21,9 @@ void RobotMotion::step(int fullSteps) {
 }
 
 void RobotMotion::rotate(float degrees) {
-    int halfSteps = (int)lroundf(degrees / config.degreesPerHalfRotation);
-    if (halfSteps == 0) return;
-    enqueue({Action::Rotate, halfSteps});
+    int fullSteps = (int)lroundf(degrees / config.degreesPerRotation);
+    if (fullSteps == 0) return;
+    enqueue({Action::Rotate, fullSteps});
 }
 
 void RobotMotion::sit() { enqueue({Action::Sit}); }

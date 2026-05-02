@@ -27,7 +27,7 @@ static void printHelp() {
     Serial.println("   b     Body actuators -> neutral");
     Serial.println(" Movements (queued):");
     Serial.println("   i / k Step forward / backward (one full stride)");
-    Serial.println("   j / l Rotate left / right (~degreesPerHalfRotation x 2)");
+    Serial.println("   j / l Rotate left / right (~degreesPerRotation)");
     Serial.println("   c     Crouch");
     Serial.println("   x     Sit (crouch + extra leg lift)");
     Serial.println("   v     Stand (full neutral pose)");
@@ -97,10 +97,10 @@ static void handleKey(char c) {
             robotMotion.step(-1);
             break;
         case 'j':
-            robotMotion.rotate(-cfg.degreesPerHalfRotation * 2.0f);
+            robotMotion.rotate(-cfg.degreesPerRotation);
             break;
         case 'l':
-            robotMotion.rotate(cfg.degreesPerHalfRotation * 2.0f);
+            robotMotion.rotate(cfg.degreesPerRotation);
             break;
         case 'x':
             robotMotion.sit();
@@ -155,9 +155,14 @@ void setup() {
     servoManager.begin();
 
     robotMotion.begin();
-    // FIXME tweaking:
-    robotMotion.config.liftFraction = 1.0f;
-    robotMotion.config.speedFactor  = 0.25f;  // 0.1f;  // 10x slower for debugging
+
+    // leg movement tuning
+    robotMotion.config.liftFraction = 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
+    // robotMotion.config.speedFactor  = 0.25f;  // 0.1f;  // 10x slower for debugging
+    robotMotion.config.crouchFraction = 0.95f;  // 1.0f is the most extreme crouch; reduce to avoid scraping knees on the ground
+
+    // whole body movement tuning:
+    robotMotion.config.actuateFraction = 1.0f;  // maximum length of the step
 
     printHelp();
 }

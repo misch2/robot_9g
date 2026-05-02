@@ -5,35 +5,35 @@
 #include "../servo_motion.h"
 #include "robot_config.h"
 
-// Rotates the robot using the Rotation servo (mounted on diagA = {RearLeft,
-// FrontRight}). Mechanically distinct from HalfStepMover.
+// Rotates the robot using the Rotation servo. Mechanically distinct from
+// HalfStepMover.
 //
-// The Rotation servo is one-sided: the diagA body half can only be tilted
-// to one side of the diagB body half, so its target only ever alternates
-// between 0 and +max. Direction is selected by which diagonal lifts first:
+// Physical model: the chassis is rigidly attached to one diagonal (the
+// "body diagonal"); the other diagonal is loose legs coupled to the
+// chassis through the Rotation servo. The servo is one-sided: the angle
+// between the two diagonals can only be 0 or +max, never negative.
 //
-//   sign>0 (rotate one way):   first lift is diagA. Lifting A while servo
-//                              drives 0→+max swings the in-air diagA body
-//                              half +N relative to planted diagB; next
-//                              half-step lifts diagB and servo recenters
-//                              +max→0, swinging diagB body half to align.
+// One full step = two half-steps:
+//   1. Lift one diagonal, drive servo 0→+max.
+//   2. Lift the other diagonal, drive servo +max→0.
 //
-//   sign<0 (rotate other way): first lift is diagB. Lifting B while servo
-//                              drives 0→+max swings the in-air diagB body
-//                              half −N relative to planted diagA; next
-//                              half-step lifts diagA and servo recenters.
+// Body yaw only happens during the half-step where the *body* diagonal is
+// in the air; the other half-step is purely realigning the loose legs.
+// Net rotation per full step is `degreesPerRotation`, and direction is
+// selected by which diagonal lifts first:
 //
-// Each half-step is useful. For even half-step counts the natural
-// alternation ends with the servo at 0; odd counts leave it at +max and
-// the next rotate job continues the alternation from there.
+//   sign>0: diagA = {RearLeft, FrontRight} lifts first.
+//   sign<0: diagB = {FrontLeft, RearRight} lifts first.
 //
-// Same overlap timing as HalfStepMover (bodyLeadInMs, bodySettleMs).
+// The servo always starts and ends a job at 0, so no state persists
+// across jobs. Same overlap timing as HalfStepMover (bodyLeadInMs,
+// bodySettleMs).
 class RotationMover {
 public:
     RotationMover(ServoMotion& motion, const RobotConfig& config);
 
-    // |signedHalfSteps| half-steps; sign sets direction.
-    void start(int signedHalfSteps);
+    // |signedFullSteps| full steps; sign sets direction.
+    void start(int signedFullSteps);
 
     // Returns true once the entire job has completed.
     bool update(uint32_t now);
@@ -47,14 +47,10 @@ private:
     ServoMotion& motion;
     const RobotConfig& config;
 
-    int remaining         = 0;
-    bool currentDiagonalA = false;
-    bool active           = false;
-    // Persists across jobs: tracks whether the rotation servo is currently
-    // at +max (true) or 0 (false). Toggled at the end of each half-step so
-    // the next rotate job continues the alternation cleanly even after odd
-    // half-step counts.
-    bool servoAtExtreme = false;
+    int halfStepsRemaining = 0;
+    bool currentDiagonalA  = false;
+    bool servoAtExtreme    = false;
+    bool active            = false;
 
     uint32_t actuateAtMs   = 0;
     uint32_t dropAtMs      = 0;

@@ -78,7 +78,7 @@ private:
 
     struct Job {
         Action action = Action::None;
-        int param     = 0;  // signed half-step count for Walk/Rotate/Dance; 0 for poses
+        int param     = 0;  // signed half-steps for Walk; signed full steps for Rotate; leg count for Dance; 0 for poses
         Job()         = default;
         Job(Action a) : action(a), param(0) {}
         Job(Action a, int p) : action(a), param(p) {}

@@ -7,16 +7,15 @@ constexpr ServoId kDiagB[2] = {ServoId::FrontLeft, ServoId::RearRight};
 
 RotationMover::RotationMover(ServoMotion& m, const RobotConfig& c) : motion(m), config(c) {}
 
-void RotationMover::start(int signedHalfSteps) {
-    if (signedHalfSteps == 0) return;
-    remaining = signedHalfSteps;
-    // Direction is encoded in lift order. With the servo currently at 0
-    // (servoAtExtreme=false), sign>0 lifts diagA first, sign<0 lifts diagB
-    // first. With the servo at +max (after an odd-count rotation), the
-    // first lift is the inverse of that — XOR encodes both cases.
-    const bool positive = signedHalfSteps > 0;
-    currentDiagonalA    = positive != servoAtExtreme;
-    active              = true;
+void RotationMover::start(int signedFullSteps) {
+    if (signedFullSteps == 0) return;
+    halfStepsRemaining = (signedFullSteps > 0 ? signedFullSteps : -signedFullSteps) * 2;
+    // sign>0 lifts diagA first; sign<0 lifts diagB first. Servo always
+    // starts a job at 0 (and ends at 0 since each job is an even number
+    // of half-steps), so no cross-job state to consult.
+    currentDiagonalA = signedFullSteps > 0;
+    servoAtExtreme   = false;
+    active           = true;
     beginHalfStep(millis());
 }
 
@@ -51,13 +50,9 @@ bool RotationMover::update(uint32_t now) {
     // drove it to, and the next half-step lifts the other diagonal.
     servoAtExtreme   = !servoAtExtreme;
     currentDiagonalA = !currentDiagonalA;
+    halfStepsRemaining--;
 
-    if (remaining > 0)
-        remaining--;
-    else if (remaining < 0)
-        remaining++;
-
-    if (remaining == 0) {
+    if (halfStepsRemaining == 0) {
         active = false;
         return true;
     }

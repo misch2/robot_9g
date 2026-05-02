@@ -19,14 +19,13 @@ struct RobotConfig {
     // left/right.
     float actuateFraction = 1.0f;  // this produced too small steps: 0.44f;
 
-    // Approximate yaw produced by one rotation half-step. Used to convert
-    // rotate(degrees) into a half-step count; tune to your geometry.
-    float degreesPerHalfRotation = 15.0f;
+    // Approximate yaw produced by one rotation step. Tune to your geometry.
+    float degreesPerRotation = 30.0f;
 
     // Phase durations (ms).
     uint32_t legLiftMs = 200;
     uint32_t actuateMs = 350;
-    uint32_t legDropMs = 400;  // 200;
+    uint32_t legDropMs = 200;
     uint32_t poseMs    = 400;
 
     // Overlap timing within a half-step.
