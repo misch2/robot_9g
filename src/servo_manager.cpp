@@ -42,6 +42,22 @@ float ServoManager::getCurrentAngle(ServoId id) const {
     return servos[index].getCurrentAngle();
 }
 
+/// Maps a fraction in [-1, +1] to an absolute angle for the given servo, based on its rest position and primary direction. The fraction is applied to the distance from the rest position to the respective limit. The primaryDirection determines which way is "positive" and which is "negative". Values outside [-1, +1] still get clamped by Servo::clampAngle() before the pulse is written.
+//
+// Example: if rest=90, min=0, max=180, primaryDirection=+1, then:
+//   fraction=-1 -> angle=0 (fully toward min)
+//   fraction=-0.5 -> angle=45 (halfway toward min)
+//   fraction=0  -> angle=90 (rest)
+//   fraction=+0.5 -> angle=135 (halfway toward max)
+//   fraction=+1 -> angle=180 (fully toward max)
+//
+// Example for asymmetric limits: if rest=10, min=0, max=90, primaryDirection=-1, then:
+//   fraction=-1 -> angle=90 (fully toward max, due to negative primaryDirection)
+//   fraction=-0.5 -> angle=50 (halfway toward max)
+//   fraction=0  -> angle=10 (rest)
+//   fraction=+0.5 -> angle=5 (halfway toward min)
+//   fraction=+1 -> angle=0 (fully toward min, due to negative primaryDirection)
+//
 float ServoManager::fractionToAngle(ServoId id, float fraction) const {
     size_t index = static_cast<size_t>(id);
     if (index >= kCount) return 0.0f;

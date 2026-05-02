@@ -35,12 +35,12 @@ struct ServoSpec {
 
 constexpr ServoSpec kServos[] = {
     //
-    {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  95,  95.0f, -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
-    {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, 90, 180, 90.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  90.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
-    {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 90.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 0,  90,  90.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
-    {ServoId::Translation, "Translation", PIN_SERVO_6, 10, 170, 90.0f, +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
+    {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  95,  95.0f,  -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
+    {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, 90, 180, 90.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, 0,  90,  90.0f,  -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, 90, 180, 90.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 10, 100, 100.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
+    {ServoId::Translation, "Translation", PIN_SERVO_6, 10, 170, 90.0f,  +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),
