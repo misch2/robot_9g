@@ -153,7 +153,11 @@ void setup() {
 
     robotFace.begin();
     servoManager.begin();
+
     robotMotion.begin();
+    // FIXME tweaking:
+    robotMotion.config.liftFraction = 1.0f;
+
 
     printHelp();
 }

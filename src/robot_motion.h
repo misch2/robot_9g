@@ -2,6 +2,10 @@
 
 #include <Arduino.h>
 #include "config.h"
+#include "robot_movers/dance_mover.h"
+#include "robot_movers/half_step_mover.h"
+#include "robot_movers/pose_mover.h"
+#include "robot_movers/robot_config.h"
 #include "servo_motion.h"
 
 // Whole-robot movements layered on top of ServoMotion.
@@ -29,52 +33,18 @@
 // lift→actuate→drop sequence.
 //
 // All commands are queued and asynchronous; call update() from loop().
+//
+// This class is a thin orchestrator: it owns the job queue and dispatches
+// each job to one of three independent state machines (HalfStepMover,
+// DanceMover, PoseMover) declared in robot_movers.h.
 class RobotMotion {
 public:
-    struct Config {
-        // How far each leg lifts during the gait, as a fraction of its
-        // available range from rest toward the primary limit. 1.0 would lift
-        // to the safety limit; the gait usually wants less than that.
-        float liftFraction = 0.67f;
-
-        // Crouch pose: how far each leg bends in its lift direction. 1.0 =
-        // pinned at the safety limit (the most extreme crouch the HW allows).
-        float crouchFraction = 1.0f;
-
-        // Body servo amplitude during a half-step actuation. Translation goes
-        // ±actuateFraction to step forward/backward; Rotation does the same
-        // for left/right.
-        float actuateFraction = 1.0f;  // this produced too small steps: 0.44f;
-
-        // Approximate yaw produced by one rotation half-step. Used to convert
-        // rotate(degrees) into a half-step count; tune to your geometry.
-        float degreesPerHalfRotation = 15.0f;
-
-        // Phase durations (ms).
-        uint32_t legLiftMs = 200;
-        uint32_t actuateMs = 350;
-        uint32_t legDropMs = 400;  // 200;
-        uint32_t poseMs    = 400;
-
-        // Overlap timing within a half-step.
-        // bodyLeadInMs: how long after the lift starts before body actuation
-        //   begins. Small values make the gait smoother but require the legs
-        //   to be off the ground quickly.
-        // bodySettleMs: minimum margin between body actuation finishing and
-        //   the legs touching the ground. The actual margin may be larger if
-        //   the leg lift+drop time exceeds the body actuation time.
-        uint32_t bodyLeadInMs = 60;
-        uint32_t bodySettleMs = 50;
-
-        // Dance: how long each leg holds at the top before dropping back down.
-        uint32_t danceHoldMs = 50;  // 120;
-    };
-
     explicit RobotMotion(ServoMotion& motion);
 
-    Config config;
+    // Tunables exposed for runtime tweaking from the serial console.
+    RobotConfig config;
 
-    // Drive every servo to its standing pose. Issues motion immediately.
+    // Drive every servo to its standing pose. Treats it as a regular pose job.
     void begin();
 
     // Queued commands. Negative values reverse direction.
@@ -92,55 +62,38 @@ private:
     enum class Action : uint8_t { None,
                                   Walk,
                                   Rotate,
-                                  Crouch,
                                   Sit,
+                                  Crouch,
                                   Stand,
                                   Dance };
-    enum class Phase : uint8_t { Idle,
-                                 HalfStep,
-                                 DanceStep,
-                                 Pose };
+
+    enum class Active : uint8_t { None,
+                                  HalfStep,
+                                  Dance,
+                                  Pose };
 
     static constexpr size_t kMaxJobs = 8;
 
     struct Job {
         Action action = Action::None;
-        int remaining = 0;  // signed half-step count; sign = direction
+        int param     = 0;  // signed half-step count for Walk/Rotate/Dance; 0 for poses
         Job()         = default;
-        Job(Action a, int r) : action(a), remaining(r) {}
+        Job(Action a) : action(a), param(0) {}
+        Job(Action a, int p) : action(a), param(p) {}
     };
 
     ServoMotion& motion;
+    HalfStepMover halfStepMover;
+    DanceMover danceMover;
+    PoseMover poseMover;
+    Active active = Active::None;
+
     Job queue[kMaxJobs];
     size_t head = 0;
     size_t tail = 0;
-    Job currentJob;
-    Phase phase           = Phase::Idle;
-    bool nextDiagonalA    = true;   // which diagonal lifts on the next half-step
-    bool currentDiagonalA = true;   // diagonal lifted in the current half-step
-    bool settling         = false;  // running the recenter half-step at job end
-
-    // Half-step schedule (absolute millis() timestamps).
-    uint32_t actuateAtMs   = 0;
-    uint32_t dropAtMs      = 0;
-    uint32_t halfStepEndMs = 0;
-    bool actuateIssued     = false;
-    bool dropIssued        = false;
-
-    // Dance step schedule.
-    uint8_t danceLegIdx     = 0;  // index into the clockwise leg order
-    uint32_t danceDropAtMs  = 0;
-    uint32_t danceStepEndMs = 0;
-    bool danceDropIssued    = false;
 
     bool queueEmpty() const { return head == tail; }
     bool queueFull() const { return ((tail + 1) % kMaxJobs) == head; }
     void enqueue(const Job& j);
-
-    void startHalfStep();
-    void startDanceStep();
-    void issueLift();
-    void issueActuate();
-    void issueDrop();
-    void issuePose(Action action);
+    void startJob(const Job& j);
 };
