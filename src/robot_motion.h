@@ -44,7 +44,7 @@ public:
         // Body servo amplitude during a half-step actuation. Translation goes
         // ±actuateFraction to step forward/backward; Rotation does the same
         // for left/right.
-        float actuateFraction = 0.44f;
+        float actuateFraction = 1.0f; // this produced too small steps: 0.44f;
 
         // Approximate yaw produced by one rotation half-step. Used to convert
         // rotate(degrees) into a half-step count; tune to your geometry.

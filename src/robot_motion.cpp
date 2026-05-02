@@ -9,15 +9,20 @@ constexpr ServoId kAllLegs[4] = {ServoId::FrontLeft, ServoId::FrontRight,
 // Clockwise viewed from above with the robot facing forward.
 constexpr ServoId kClockwiseLegs[4] = {ServoId::FrontLeft, ServoId::FrontRight,
                                        ServoId::RearRight, ServoId::RearLeft};
+
+constexpr float fractionBalanced = 0.0f;
+constexpr float fractionMax      = 1.0f;
+constexpr float fractionMin      = -1.0f;
+
 }  // namespace
 
 RobotMotion::RobotMotion(ServoMotion& m) : motion(m) {}
 
 void RobotMotion::begin() {
-    // FIXME use "rest" position, is it really always 0.0f? Maybe add a helper in ServoMotion to convert from fraction to angle using the ServoSpec?
-    for (ServoId leg : kAllLegs) motion.moveToFraction(leg, 0.0f, config.poseMs);
-    motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
-    motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
+    // Start in a neutral standing pose, every servo in .
+    for (ServoId leg : kAllLegs) motion.moveToFraction(leg, fractionBalanced, config.poseMs);
+    motion.moveToFraction(ServoId::Translation, fractionBalanced, config.poseMs);
+    motion.moveToFraction(ServoId::Rotation, fractionBalanced, config.poseMs);
 }
 
 void RobotMotion::enqueue(const Job& j) {
@@ -61,8 +66,8 @@ void RobotMotion::issueLift() {
 
 void RobotMotion::issueDrop() {
     const ServoId* pair = currentDiagonalA ? kDiagA : kDiagB;
-    motion.moveToFraction(pair[0], 0.0f, config.legDropMs);
-    motion.moveToFraction(pair[1], 0.0f, config.legDropMs);
+    motion.moveToFraction(pair[0], fractionBalanced, config.legDropMs);
+    motion.moveToFraction(pair[1], fractionBalanced, config.legDropMs);
 }
 
 void RobotMotion::issueActuate() {
@@ -73,10 +78,10 @@ void RobotMotion::issueActuate() {
     // actuator while a diagonal is still lifted (no friction fight).
     float fraction;
     if (settling) {
-        fraction = 0.0f;
+        fraction = fractionBalanced;
     } else {
         const int sign = (currentJob.remaining > 0) ? 1 : -1;
-        fraction       = (((sign > 0) == currentDiagonalA) ? +1.0f : -1.0f) * config.actuateFraction;
+        fraction       = (((sign > 0) == currentDiagonalA) ? fractionMax : fractionMin) * config.actuateFraction;
     }
     const ServoId target = (currentJob.action == Action::Walk) ? ServoId::Translation : ServoId::Rotation;
     motion.moveToFraction(target, fraction, config.actuateMs);
@@ -85,20 +90,20 @@ void RobotMotion::issueActuate() {
 void RobotMotion::issuePose(Action action) {
     if (action == Action::Sit) {
         // Sit = back on the ground, front raised. Only the front legs lift the body; the rear legs just tuck under it. Translation and rotation are neutral.
-        motion.moveToFraction(ServoId::RearLeft, +1.0f, config.poseMs);
-        motion.moveToFraction(ServoId::RearRight, +1.0f, config.poseMs);
-        motion.moveToFraction(ServoId::FrontLeft, 0.0f, config.poseMs);
-        motion.moveToFraction(ServoId::FrontRight, 0.0f, config.poseMs);
-        motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
-        motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::RearLeft, fractionMax, config.poseMs);
+        motion.moveToFraction(ServoId::RearRight, fractionMax, config.poseMs);
+        motion.moveToFraction(ServoId::FrontLeft, fractionBalanced, config.poseMs);
+        motion.moveToFraction(ServoId::FrontRight, fractionBalanced, config.poseMs);
+        motion.moveToFraction(ServoId::Translation, fractionBalanced, config.poseMs);
+        motion.moveToFraction(ServoId::Rotation, fractionBalanced, config.poseMs);
         return;
     }
 
-    const float legFraction = (action == Action::Crouch) ? config.crouchFraction : 0.0f;
+    const float legFraction = (action == Action::Crouch) ? config.crouchFraction : fractionBalanced;
     for (ServoId leg : kAllLegs) motion.moveToFraction(leg, legFraction, config.poseMs);
     if (action != Action::Crouch) {
-        motion.moveToFraction(ServoId::Translation, 0.0f, config.poseMs);
-        motion.moveToFraction(ServoId::Rotation, 0.0f, config.poseMs);
+        motion.moveToFraction(ServoId::Translation, fractionBalanced, config.poseMs);
+        motion.moveToFraction(ServoId::Rotation, fractionBalanced, config.poseMs);
     }
 }
 
@@ -169,7 +174,7 @@ void RobotMotion::update() {
     } else if (phase == Phase::DanceStep) {
         const ServoId leg = kClockwiseLegs[danceLegIdx & 3];
         if (!danceDropIssued && (int32_t)(now - danceDropAtMs) >= 0) {
-            motion.moveToFraction(leg, 0.0f, config.legDropMs);
+            motion.moveToFraction(leg, fractionBalanced, config.legDropMs);
             danceDropIssued = true;
         }
         if ((int32_t)(now - danceStepEndMs) < 0) return;
