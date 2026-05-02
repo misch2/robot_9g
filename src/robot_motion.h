@@ -6,6 +6,7 @@
 #include "robot_movers/half_step_mover.h"
 #include "robot_movers/pose_mover.h"
 #include "robot_movers/robot_config.h"
+#include "robot_movers/rotation_mover.h"
 #include "servo_motion.h"
 
 // Whole-robot movements layered on top of ServoMotion.
@@ -69,6 +70,7 @@ private:
 
     enum class Active : uint8_t { None,
                                   HalfStep,
+                                  Rotation,
                                   Dance,
                                   Pose };
 
@@ -84,6 +86,7 @@ private:
 
     ServoMotion& motion;
     HalfStepMover halfStepMover;
+    RotationMover rotationMover;
     DanceMover danceMover;
     PoseMover poseMover;
     Active active = Active::None;

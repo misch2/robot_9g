@@ -157,7 +157,7 @@ void setup() {
     robotMotion.begin();
     // FIXME tweaking:
     robotMotion.config.liftFraction = 1.0f;
-    robotMotion.config.speedFactor  = 0.1f;  // 10x slower for debugging
+    robotMotion.config.speedFactor  = 0.25f;  // 0.1f;  // 10x slower for debugging
 
     printHelp();
 }

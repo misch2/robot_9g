@@ -7,9 +7,8 @@ constexpr ServoId kDiagB[2] = {ServoId::FrontLeft, ServoId::RearRight};
 
 HalfStepMover::HalfStepMover(ServoMotion& m, const RobotConfig& c) : motion(m), config(c) {}
 
-void HalfStepMover::start(ServoId body, int signedHalfSteps) {
+void HalfStepMover::start(int signedHalfSteps) {
     if (signedHalfSteps == 0) return;
-    bodyServo = body;
     remaining = signedHalfSteps;
     settling  = false;
     active    = true;
@@ -87,7 +86,7 @@ void HalfStepMover::issueDrop() {
 }
 
 void HalfStepMover::issueActuate() {
-    // sign +1 = forward / left (the "primary" job direction), -1 = reverse.
+    // sign +1 = forward, -1 = backward.
     // When diagonalA is lifted, primary direction maps to +actuateFraction;
     // when diagonalB is lifted the body servo must go the opposite way to
     // keep pushing the body the same direction. Settling targets 0 to
@@ -100,5 +99,5 @@ void HalfStepMover::issueActuate() {
         const int sign = (remaining > 0) ? 1 : -1;
         fraction       = (((sign > 0) == currentDiagonalA) ? fractionMax : fractionMin) * config.actuateFraction;
     }
-    motion.moveToFraction(bodyServo, fraction, config.scaled(config.actuateMs));
+    motion.moveToFraction(ServoId::Translation, fraction, config.scaled(config.actuateMs));
 }

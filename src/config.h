@@ -33,6 +33,7 @@ struct ServoSpec {
     int8_t primaryDirection;
 };
 
+// Hardware-specific servo configuration. Tune these to your geometry and HW limits.
 constexpr ServoSpec kServos[] = {
     //
     {ServoId::FrontLeft,   "FrontLeft",   PIN_SERVO_1, 0,  95,  95.0f,  -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
