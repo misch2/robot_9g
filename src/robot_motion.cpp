@@ -93,6 +93,26 @@ void RobotMotion::update() {
     }
     if (!done) return;
 
+    // After a Walk job finishes its regular half-steps the body actuator
+    // is left at one extreme. If the next queued job is another Walk in
+    // the same direction we dispatch it directly so the gait continues
+    // uninterrupted; otherwise we run a single recenter half-step before
+    // whatever comes next.
+    if (active == Active::HalfStep && halfStepMover.needsRecenter()) {
+        if (!queueEmpty()) {
+            const Job& next = queue[head];
+            if (next.action == Action::Walk &&
+                ((next.param > 0) == (halfStepMover.direction() > 0))) {
+                Job j = next;
+                head  = (head + 1) % kMaxJobs;
+                startJob(j);
+                return;
+            }
+        }
+        halfStepMover.startRecenter();
+        return;
+    }
+
     active = Active::None;
     if (queueEmpty()) return;
 

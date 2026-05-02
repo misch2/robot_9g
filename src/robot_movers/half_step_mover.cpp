@@ -10,8 +10,16 @@ HalfStepMover::HalfStepMover(ServoMotion& m, const RobotConfig& c) : motion(m), 
 void HalfStepMover::start(int signedHalfSteps) {
     if (signedHalfSteps == 0) return;
     remaining = signedHalfSteps;
+    lastDir   = (signedHalfSteps > 0) ? 1 : -1;
     settling  = false;
     active    = true;
+    beginHalfStep(millis());
+}
+
+void HalfStepMover::startRecenter() {
+    if (!bodyOffCenter) return;
+    settling = true;
+    active   = true;
     beginHalfStep(millis());
 }
 
@@ -51,8 +59,9 @@ bool HalfStepMover::update(uint32_t now) {
     nextDiagonalA = !currentDiagonalA;
 
     if (settling) {
-        settling = false;
-        active   = false;
+        settling      = false;
+        active        = false;
+        bodyOffCenter = false;
         return true;
     }
 
@@ -62,10 +71,15 @@ bool HalfStepMover::update(uint32_t now) {
         remaining++;
 
     if (remaining == 0) {
-        // Run one more lift / actuate(0) / drop to recenter the body
-        // actuator while a diagonal is lifted, so a subsequent reversal
-        // doesn't waste its first half-step.
-        settling = true;
+        // Hand control back to the orchestrator with the body actuator at
+        // one extreme. If the next queued job is a same-direction Walk it
+        // can dispatch directly (alternation continues). Otherwise it must
+        // call startRecenter() to drive Translation back to 0 while a
+        // diagonal is lifted, so a subsequent reversal or pose doesn't
+        // waste its first half-step / fight friction.
+        active        = false;
+        bodyOffCenter = true;
+        return true;
     }
     beginHalfStep(now);
     return false;
