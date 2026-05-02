@@ -26,8 +26,13 @@
 //   sign<0: diagB = {FrontLeft, RearRight} lifts first.
 //
 // The servo always starts and ends a job at 0, so no state persists
-// across jobs. Same overlap timing as HalfStepMover (bodyLeadInMs,
-// bodySettleMs).
+// across jobs. Within a half-step the same lift/actuate/drop overlap as
+// HalfStepMover applies (bodyLeadInMs, bodySettleMs). Unlike
+// HalfStepMover, half-steps *also* overlap each other: each half-step
+// ends as soon as its body actuation has settled, and the leg drop
+// continues into the next half-step's lift on the opposite diagonal.
+// Both diagonals may briefly be airborne at the boundary. The final
+// half-step of a job waits for legs to land before signalling done.
 class RotationMover {
 public:
     RotationMover(ServoMotion& motion, const RobotConfig& config);

@@ -22,13 +22,25 @@ void RotationMover::start(int signedFullSteps) {
 void RotationMover::beginHalfStep(uint32_t now) {
     issueLift();
 
+    // The lift/drop pair for this half-step targets one diagonal; the next
+    // half-step lifts the *other* diagonal, so its lift can overlap this
+    // step's drop without conflict. We therefore end this half-step as soon
+    // as the body has settled (bodySpan) and let the leg drop continue into
+    // the next half-step's lift. Both diagonals are briefly airborne mid-
+    // transition — that's accepted; the robot just touches down.
+    //
+    // Exception: the *last* half-step of the job extends to whichever of
+    // legSpan / bodySpan is longer, so the job ends with all legs grounded.
+    // Drop scheduling stays anchored to the legs-land point (legSpan from
+    // start) so drop timing relative to body settle is preserved.
     const uint32_t legSpan  = config.scaled(config.legLiftMs) + config.scaled(config.legDropMs);
     const uint32_t bodySpan = config.scaled(config.bodyLeadInMs) + config.scaled(config.actuateMs) + config.scaled(config.bodySettleMs);
-    const uint32_t total    = legSpan > bodySpan ? legSpan : bodySpan;
+    const uint32_t landing  = legSpan > bodySpan ? legSpan : bodySpan;
+    const bool isLast       = (halfStepsRemaining == 1);
 
     actuateAtMs   = now + config.scaled(config.bodyLeadInMs);
-    halfStepEndMs = now + total;
-    dropAtMs      = halfStepEndMs - config.scaled(config.legDropMs);
+    halfStepEndMs = now + (isLast ? landing : bodySpan);
+    dropAtMs      = now + landing - config.scaled(config.legDropMs);
     actuateIssued = false;
     dropIssued    = false;
 }
