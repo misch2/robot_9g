@@ -41,6 +41,18 @@ struct RobotConfig {
     // Dance: how long each leg holds at the top before dropping back down.
     uint32_t danceHoldMs = 50;  // 120;
 
+    // Head: when true, RotationMover turns the head toward the rotation
+    // direction at start and returns it to centre when the job completes.
+    // Flip the sign of headFollowFraction if the head turns the wrong way.
+    bool headFollowsRotation  = true;
+    float headFollowFraction  = 0.6f;
+    uint32_t headFollowMs     = 300;
+
+    // "No" gesture: amplitude and per-half-shake duration. One shake = head
+    // moves from one side to the other.
+    float headShakeFraction = 0.6f;
+    uint32_t headShakeMs    = 150;
+
     // Global speed modifier applied to every motion duration. 1.0 = normal,
     // 0.5 = half speed (everything takes twice as long), 2.0 = double speed.
     // Useful for slowing the whole robot down during debugging. Must be > 0.

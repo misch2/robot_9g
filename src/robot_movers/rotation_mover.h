@@ -56,6 +56,7 @@ private:
     bool currentDiagonalA  = false;
     bool servoAtExtreme    = false;
     bool active            = false;
+    int directionSign      = 0;  // sign of the original signedFullSteps; used to recentre the head on completion
 
     uint32_t actuateAtMs   = 0;
     uint32_t dropAtMs      = 0;

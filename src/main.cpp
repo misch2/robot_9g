@@ -24,7 +24,8 @@ static void printHelp() {
     Serial.println("   r/f   RearRight  up/down");
     Serial.println("   t/g   Translation forward/backward");
     Serial.println("   y/h   Rotation    left/right");
-    Serial.println("   b     Body actuators -> neutral");
+    Serial.println("   u/o   Head        left/right");
+    Serial.println("   b     Body + head actuators -> neutral");
     Serial.println(" Movements (queued):");
     Serial.println("   i / k Step forward / backward (one full stride)");
     Serial.println("   j / l Rotate left / right (~degreesPerRotation)");
@@ -32,6 +33,7 @@ static void printHelp() {
     Serial.println("   x     Sit (crouch + extra leg lift)");
     Serial.println("   v     Stand (full neutral pose)");
     Serial.println("   z     Dance (lift each leg clockwise)");
+    Serial.println("   n     Shake head 'no'");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   ?     This help");
@@ -84,9 +86,16 @@ static void handleKey(char c) {
         case 'h':
             servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
+        case 'u':
+            servoMotion.moveToFraction(ServoId::HeadRotation, +1.0f, cfg.scaled(kDirectMoveMs));
+            break;
+        case 'o':
+            servoMotion.moveToFraction(ServoId::HeadRotation, -1.0f, cfg.scaled(kDirectMoveMs));
+            break;
         case 'b':
             servoMotion.moveToFraction(ServoId::Translation, 0.0f, cfg.scaled(kDirectMoveMs));
             servoMotion.moveToFraction(ServoId::Rotation, 0.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::HeadRotation, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
         // --- Queued whole-robot movements ---
@@ -113,6 +122,9 @@ static void handleKey(char c) {
             break;
         case 'z':
             robotMotion.dance();
+            break;
+        case 'n':
+            robotMotion.shakeNo();
             break;
 
         // --- Display ---
@@ -153,18 +165,24 @@ void setup() {
 
     robotFace.begin();
     servoManager.begin();
-
     robotMotion.begin();
 
+    // FIXME debugging
     robotMotion.config.speedFactor  = 0.25f;  // 0.1f;  // 10x slower for debugging
     
     // leg movement tuning
-    robotMotion.config.liftFraction = 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
+    robotMotion.config.liftFraction = 0.67f; // 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
     robotMotion.config.crouchFraction = 0.95f;  // 1.0f is the most extreme crouch; reduce to avoid scraping knees on the ground
 
     // whole body movement tuning:
     // FIXME this is shared for both translation and rotation!!!
-    robotMotion.config.actuateFraction = 1.0f; // 1.0f;  // maximum length of the step
+    robotMotion.config.actuateFraction = 0.5f; // 1.0f;  // maximum length of the step
+
+    // robotMotion.config.legLiftMs = 10;
+    // robotMotion.config.actuateMs = 10;
+    // robotMotion.config.legDropMs = 10;
+
+
 
     printHelp();
 }

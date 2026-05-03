@@ -4,6 +4,7 @@
 #include "config.h"
 #include "robot_movers/dance_mover.h"
 #include "robot_movers/half_step_mover.h"
+#include "robot_movers/head_shake_mover.h"
 #include "robot_movers/pose_mover.h"
 #include "robot_movers/robot_config.h"
 #include "robot_movers/rotation_mover.h"
@@ -55,6 +56,7 @@ public:
     void crouch();
     void stand();
     void dance(int rotations = 1);  // lift+drop each leg clockwise; one rotation = 4 legs
+    void shakeNo(int shakes = 4);   // "no" head gesture; one shake = one side-to-side transition
 
     void update();
     bool isIdle() const;
@@ -66,13 +68,15 @@ private:
                                   Sit,
                                   Crouch,
                                   Stand,
-                                  Dance };
+                                  Dance,
+                                  HeadShake };
 
     enum class Active : uint8_t { None,
                                   HalfStep,
                                   Rotation,
                                   Dance,
-                                  Pose };
+                                  Pose,
+                                  HeadShake };
 
     static constexpr size_t kMaxJobs = 8;
 
@@ -89,6 +93,7 @@ private:
     RotationMover rotationMover;
     DanceMover danceMover;
     PoseMover poseMover;
+    HeadShakeMover headShakeMover;
     Active active = Active::None;
 
     Job queue[kMaxJobs];

@@ -2,7 +2,7 @@
 #include <math.h>
 
 RobotMotion::RobotMotion(ServoMotion& m)
-    : motion(m), halfStepMover(m, config), rotationMover(m, config), danceMover(m, config), poseMover(m) {}
+    : motion(m), halfStepMover(m, config), rotationMover(m, config), danceMover(m, config), poseMover(m), headShakeMover(m, config) {}
 
 void RobotMotion::begin() { startJob({Action::Stand, 0}); }
 
@@ -35,6 +35,11 @@ void RobotMotion::dance(int rotations) {
     enqueue({Action::Dance, rotations * 4});
 }
 
+void RobotMotion::shakeNo(int shakes) {
+    if (shakes <= 0) return;
+    enqueue({Action::HeadShake, shakes});
+}
+
 bool RobotMotion::isIdle() const {
     return active == Active::None && queueEmpty();
 }
@@ -52,6 +57,10 @@ void RobotMotion::startJob(const Job& j) {
         case Action::Dance:
             danceMover.start(j.param);
             active = Active::Dance;
+            break;
+        case Action::HeadShake:
+            headShakeMover.start(j.param);
+            active = Active::HeadShake;
             break;
         case Action::Stand:
             poseMover.start(PoseMover::Pose::Stand, config);
@@ -86,6 +95,9 @@ void RobotMotion::update() {
             break;
         case Active::Pose:
             done = poseMover.update(now);
+            break;
+        case Active::HeadShake:
+            done = headShakeMover.update(now);
             break;
         case Active::None:
             done = true;
