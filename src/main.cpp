@@ -4,11 +4,13 @@
 #include "robot_motion.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
+#include "web_control.h"
 
 ServoManager servoManager;
 ServoMotion servoMotion(servoManager);
 RobotMotion robotMotion(servoMotion);
 RobotFace robotFace;
+WebControl webControl(servoManager, servoMotion);
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
 // Use this duration for all of them so the visual feedback is consistent.
@@ -166,23 +168,22 @@ void setup() {
     robotFace.begin();
     servoManager.begin();
     robotMotion.begin();
+    webControl.begin();
 
     // FIXME debugging
-    robotMotion.config.speedFactor  = 0.25f;  // 0.1f;  // 10x slower for debugging
-    
+    robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
+
     // leg movement tuning
-    robotMotion.config.liftFraction = 0.67f; // 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
+    robotMotion.config.liftFraction   = 0.67f;  // 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
     robotMotion.config.crouchFraction = 0.95f;  // 1.0f is the most extreme crouch; reduce to avoid scraping knees on the ground
 
     // whole body movement tuning:
     // FIXME this is shared for both translation and rotation!!!
-    robotMotion.config.actuateFraction = 0.5f; // 1.0f;  // maximum length of the step
+    robotMotion.config.actuateFraction = 0.5f;  // 1.0f;  // maximum length of the step
 
     // robotMotion.config.legLiftMs = 10;
     // robotMotion.config.actuateMs = 10;
     // robotMotion.config.legDropMs = 10;
-
-
 
     printHelp();
 }
@@ -191,6 +192,7 @@ void loop() {
     processSerialInput();
     servoMotion.update();
     robotMotion.update();
+    webControl.update();
 
     // Show a Concentrating face while the robot is moving; restore the
     // prior expression once idle. Edge-detected so we don't fight 'm'.
