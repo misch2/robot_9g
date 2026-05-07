@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include "config.h"
+#ifdef ROBOT_FACE_VARIANT_EYES
+#include "robot_eyes.h"
+using RobotFace = RobotEyes;  // dual GC9D01 build — same API, different rendering
+#else
 #include "robot_face.h"
+#endif
 #include "robot_motion.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
