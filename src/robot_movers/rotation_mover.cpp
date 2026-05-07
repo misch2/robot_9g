@@ -18,7 +18,7 @@ void RotationMover::start(int signedFullSteps) {
     active           = true;
     directionSign    = signedFullSteps > 0 ? +1 : -1;
     if (config.headFollowsRotation) {
-        motion.moveToFraction(ServoId::HeadRotation,
+        motion.moveToFraction(ServoId::HeadPan,
                               directionSign * config.headFollowFraction,
                               config.scaled(config.headFollowMs));
     }
@@ -73,7 +73,7 @@ bool RotationMover::update(uint32_t now) {
     if (halfStepsRemaining == 0) {
         active = false;
         if (config.headFollowsRotation) {
-            motion.moveToFraction(ServoId::HeadRotation, fractionBalanced,
+            motion.moveToFraction(ServoId::HeadPan, fractionBalanced,
                                   config.scaled(config.headFollowMs));
         }
         return true;

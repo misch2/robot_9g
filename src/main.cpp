@@ -89,15 +89,15 @@ static void handleKey(char c) {
             servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
         case 'u':
-            servoMotion.moveToFraction(ServoId::HeadRotation, +1.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::HeadPan, +1.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'o':
-            servoMotion.moveToFraction(ServoId::HeadRotation, -1.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::HeadPan, -1.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'b':
             servoMotion.moveToFraction(ServoId::Translation, 0.0f, cfg.scaled(kDirectMoveMs));
             servoMotion.moveToFraction(ServoId::Rotation, 0.0f, cfg.scaled(kDirectMoveMs));
-            servoMotion.moveToFraction(ServoId::HeadRotation, 0.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::HeadPan, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
         // --- Queued whole-robot movements ---

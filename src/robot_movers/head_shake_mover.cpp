@@ -15,12 +15,12 @@ void HeadShakeMover::issueNext(uint32_t now) {
     const uint32_t durMs = config.scaled(config.headShakeMs);
     if (remaining > 0) {
         const float target = (toPositive ? +1.0f : -1.0f) * config.headShakeFraction;
-        motion.moveToFraction(ServoId::HeadRotation, target, durMs);
+        motion.moveToFraction(ServoId::HeadPan, target, durMs);
         toPositive = !toPositive;
         remaining--;
         phaseEnd = now + durMs;
     } else {
-        motion.moveToFraction(ServoId::HeadRotation, fractionBalanced, durMs);
+        motion.moveToFraction(ServoId::HeadPan, fractionBalanced, durMs);
         centring = true;
         phaseEnd = now + durMs;
     }
