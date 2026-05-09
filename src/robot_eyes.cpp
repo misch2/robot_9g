@@ -1,5 +1,6 @@
 #include "robot_eyes.h"
 
+#include <SPI.h>
 #include <math.h>
 
 namespace {
@@ -20,27 +21,50 @@ constexpr uint32_t kLookMinGapMs = 1500;
 constexpr uint32_t kLookMaxGapMs = 4500;
 constexpr float kPupilDrift      = 16.0f;
 constexpr float kPupilEase       = 0.7f;
+
+// Same SPI freq we used with TFT_eSPI for these panels. GC9D01 spec is
+// good to ~50 MHz; 40 MHz is comfortable headroom on the ESP32-S3 SPI
+// bus given the wiring (no length compensation, no MISO).
+constexpr uint32_t kSpiFreqHz = 40000000;
+
+// Per-eye CS/RST. PIN_TFT_DC is shared (single GPIO line into both
+// panels). Index 0 == left eye, 1 == right eye.
+constexpr int kCsPin[2]  = {PIN_TFT_CS1, PIN_TFT_CS2};
+constexpr int kRstPin[2] = {PIN_TFT_RST1, PIN_TFT_RST2};
+
+// Which panel needs its sprite 180°-flipped in software. Panels are
+// physically mounted 180° opposed, so with both at the same MADCTL
+// rotation one of them comes out 180° rotated visually. Flipping that
+// one in SW lines them back up. With default rotation Degrees_90 it's
+// panel 1 that needs the flip; if you swap which physical eye is wired
+// to CS1 vs CS2, change this index.
+constexpr int kFlipPanel = 1;
+
+// In-place 180° rotation of a square (or any) RGB565 buffer. Equivalent
+// to reversing the pixel array — for a square sprite, pixel (x, y)
+// maps to (W-1-x, H-1-y), which in a row-major array of N²=W*H pixels
+// is index (N-1-i). 12,800 swap iterations on the 160² buffer is
+// well under a millisecond on the ESP32-S3.
+inline void rotate180InPlace(uint16_t* buf, size_t pixels) {
+    for (size_t i = 0, j = pixels - 1; i < j; ++i, --j) {
+        uint16_t t = buf[i];
+        buf[i]     = buf[j];
+        buf[j]     = t;
+    }
+}
 }  // namespace
 
 RobotEyes::RobotEyes() = default;
 
 void RobotEyes::begin() {
-    // Drive CS/RST as plain GPIO. Hold both displays in reset, release in
-    // unison, then init each one in turn with only its CS asserted so the
-    // GC9D01 register writes land on the right panel.
-    for (int i = 0; i < 2; ++i) {
-        pinMode(csPin[i], OUTPUT);
-        pinMode(rstPin[i], OUTPUT);
-        digitalWrite(csPin[i], HIGH);
-        digitalWrite(rstPin[i], LOW);
-    }
-    delay(20);
-    for (int i = 0; i < 2; ++i) digitalWrite(rstPin[i], HIGH);
-    delay(150);
+    // Pin the SPI bus to our wiring before any panel touches it; the
+    // arg-less SPI.begin() inside GC9D01_LTSM::TFTHWSPIInitialize will
+    // then short-circuit on the _spi-already-initialised guard and
+    // leave our pin choices intact.
+    SPI.begin(TFT_SCLK, /*miso=*/-1, TFT_MOSI, /*ss=*/-1);
 
     initOneDisplay(0);
     initOneDisplay(1);
-    deselectAll();
 
     eyeSprite.setColorDepth(16);
     if (!eyeSprite.createSprite(kDisplayW, kDisplayH)) {
@@ -56,20 +80,42 @@ void RobotEyes::begin() {
 }
 
 void RobotEyes::initOneDisplay(int idx) {
-    selectDisplay(idx);
-    tft.init();
-    tft.setRotation(TFT_ROTATION);
-    tft.fillScreen(kBgColor);
+    panel[idx].TFTsetupGPIO_SPI(kSpiFreqHz, kRstPin[idx], TFT_DC, kCsPin[idx]);
+    panel[idx].TFTInitScreenSize(kDisplayW, kDisplayH,
+                                 GC9D01_LTSM::Resolution_e::RGB160x160_DualGate,
+                                 GC9D01_LTSM::PixelFixMode_e::Both);
+    panel[idx].TFTGC9D01Initialize();
+    panel[idx].TFTsetRotation(rotation);
+    panel[idx].fillScreen(kBgColor);
 }
 
-void RobotEyes::selectDisplay(int idx) {
-    digitalWrite(csPin[idx], LOW);
-    digitalWrite(csPin[idx ^ 1], HIGH);
+void RobotEyes::setRotation(GC9D01_LTSM::display_rotate_e r) {
+    if (rotation == r) return;
+    rotation = r;
+    panel[0].TFTsetRotation(r);
+    panel[1].TFTsetRotation(r);
+    // Force a redraw next update — the new MADCTL also clears any
+    // address-window state, and the prior frame might be stale.
+    expressionDirty = true;
+    lastOpenness    = -1.0f;
+    lastPupilDX     = 999;
+    lastPupilDY     = 999;
 }
 
-void RobotEyes::deselectAll() {
-    digitalWrite(csPin[0], HIGH);
-    digitalWrite(csPin[1], HIGH);
+void RobotEyes::pushSprite(int idx) {
+    // TFT_eSprite at 16bpp pre-byte-swaps every write (drawPixel /
+    // fillRect / fillSmoothCircle ... all do `color = (color >> 8) |
+    // (color << 8)` before storing — see Extensions/Sprite.cpp:1642).
+    // So the sprite buffer is already laid out MSB-first in memory,
+    // which is exactly the byte order GC9D01_LTSM streams to the
+    // panel — hand it over verbatim, no swap.
+    uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer());
+    if (!buf) return;
+    if (idx == kFlipPanel) {
+        rotate180InPlace(buf, (size_t)kDisplayW * kDisplayH);
+    }
+    panel[idx].drawBitmap16Data(0, 0, reinterpret_cast<const uint8_t*>(buf),
+                                kDisplayW, kDisplayH);
 }
 
 void RobotEyes::setExpression(Expression e) {
@@ -194,17 +240,13 @@ void RobotEyes::update() {
     lastPupilDX  = pdx;
     lastPupilDY  = pdy;
 
-    // Reuse the single sprite: draw left, push to display 0, redraw for
-    // the right eye, push to display 1. Saves a 51 kB framebuffer.
+    // Reuse the single sprite: draw left, push to panel 0, redraw for
+    // the right eye, push to panel 1. Saves a 51 kB second framebuffer.
     drawEye(/*isLeft=*/true, openness, pdx, pdy);
-    selectDisplay(0);
-    eyeSprite.pushSprite(0, 0);
+    pushSprite(0);
 
     drawEye(/*isLeft=*/false, openness, pdx, pdy);
-    selectDisplay(1);
-    eyeSprite.pushSprite(0, 0);
-
-    deselectAll();
+    pushSprite(1);
 }
 
 void RobotEyes::drawEye(bool isLeft, float openness, int pdx, int pdy) {

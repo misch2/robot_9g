@@ -7,3 +7,4 @@
 
 # Local Wi-Fi credentials — copy wifi_config.example.h to wifi_config.h and fill in.
 src/wifi_config.h
+.claude/settings.local.json
