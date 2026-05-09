@@ -64,6 +64,11 @@ public:
     void setRotation(GC9D01_LTSM::display_rotate_e r);
     GC9D01_LTSM::display_rotate_e getRotation() const { return rotation; }
 
+    // Debug helper: blit assets/eye1_data.h onto both panels, with the
+    // right eye horizontally flipped. Freezes the expression renderer
+    // until setExpression() / cycleExpression() is called again.
+    void showTestImage();
+
 private:
     // Each display is 160x160; the eye is centered with headroom above
     // for an eyebrow.
@@ -96,6 +101,9 @@ private:
 
     Expression expression = Expression::Happy;
     bool expressionDirty  = true;
+
+    // When true, update() suspends animation so the test image stays put.
+    bool showingTestImage = false;
 
     uint32_t lastUpdateMs = 0;
 

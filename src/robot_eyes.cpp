@@ -3,6 +3,8 @@
 #include <SPI.h>
 #include <math.h>
 
+#include "assets/eye1_data.h"
+
 namespace {
 constexpr uint16_t kBgColor    = TFT_BLACK;
 constexpr uint16_t kEyeColor   = TFT_CYAN;
@@ -70,6 +72,11 @@ void RobotEyes::begin() {
     if (!eyeSprite.createSprite(kDisplayW, kDisplayH)) {
         Serial.println("RobotEyes: eye sprite allocation failed");
     }
+    // pushImage() copies pixels verbatim unless swap is enabled, but the rest
+    // of the sprite API stores byte-swapped (see pushSprite() note). Without
+    // this, host-order RGB565 from headers like assets/eye1_data.h ends up
+    // byte-flipped on the panel — random-palette look.
+    eyeSprite.setSwapBytes(true);
 
     randomSeed((unsigned long)micros());
     uint32_t now = millis();
@@ -119,10 +126,40 @@ void RobotEyes::pushSprite(int idx) {
 }
 
 void RobotEyes::setExpression(Expression e) {
+    showingTestImage = false;
     if (e == expression) return;
     expression      = e;
     expressionDirty = true;
     applyExpressionModifiers();
+}
+
+void RobotEyes::showTestImage() {
+    using namespace assets;
+    constexpr int ox = (kDisplayW - kEye1Width) / 2;
+    constexpr int oy = (kDisplayH - kEye1Height) / 2;
+
+    // Left eye: image as-is.
+    eyeSprite.fillSprite(kBgColor);
+    eyeSprite.pushImage(ox, oy, kEye1Width, kEye1Height, kEye1Pixels);
+    pushSprite(0);
+
+    // Right eye: same image with columns reversed. pushImage doesn't
+    // expose an H-flip flag, so build one row at a time.
+    uint16_t rowBuf[kEye1Width];
+    eyeSprite.fillSprite(kBgColor);
+    for (int y = 0; y < kEye1Height; ++y) {
+        const uint16_t* src = kEye1Pixels + y * kEye1Width;
+        for (int x = 0; x < kEye1Width; ++x) {
+            rowBuf[x] = src[kEye1Width - 1 - x];
+        }
+        eyeSprite.pushImage(ox, oy + y, kEye1Width, 1, rowBuf);
+    }
+    pushSprite(1);
+
+    // Hold the frame until something else (an expression change) reclaims
+    // the displays. Without this the next update() tick would redraw the
+    // animated eye over the top.
+    showingTestImage = true;
 }
 
 void RobotEyes::cycleExpression() {
@@ -193,6 +230,7 @@ void RobotEyes::applyExpressionModifiers() {
 }
 
 void RobotEyes::update() {
+    if (showingTestImage) return;
     uint32_t now = millis();
     if (now - lastUpdateMs < (uint32_t)DISPLAY_REFRESH_MS) return;
     lastUpdateMs = now;

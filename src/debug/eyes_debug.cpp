@@ -22,6 +22,9 @@
 #include <SPI.h>
 #include <TFT_eSPI.h>
 
+#include "../assets/eye1_data.h"
+#include "../assets/eye2_data.h"
+
 namespace {
 
 constexpr int CS[2]  = {PIN_TFT_CS1, PIN_TFT_CS2};
@@ -86,6 +89,11 @@ bool ensureSprite() {
         Serial.println("  sprite alloc FAILED");
         return false;
     }
+    // pushImage() copies pixels verbatim unless swap is enabled, but the rest
+    // of the sprite API stores byte-swapped (see pushSpriteTo() note). Without
+    // this, host-order RGB565 from headers like assets/eye1_data.h ends up
+    // byte-flipped on the panel — random-palette look.
+    sprite.setSwapBytes(true);
     spriteAllocated = true;
     return true;
 }
@@ -421,6 +429,78 @@ void test8_spritePipeline() {
     Serial.println("  done");
 }
 
+// --- Static image cycler ---------------------------------------------------
+// Cycles through the bundled eye bitmaps on both panels via the same sprite
+// pipeline test8 uses. Panel 1 receives a V-flipped copy of the source so that,
+// once pushSpriteTo(1) applies its physical-mount 180° compensation, the two
+// eyes appear mirrored on screen (the source bitmap is itself pre-rotated 90°
+// CW by tools/bmp_to_header.py, so a V-flip in source space lands as an H-flip
+// in viewer space). '9' toggles the cycle on/off; loop() ticks tickEyeCycle()
+// to advance frames.
+
+struct EyeFrame {
+    const uint16_t* pixels;
+    int w;
+    int h;
+    const char* name;
+};
+
+constexpr EyeFrame kEyeFrames[] = {
+    {assets::kEye1Pixels, assets::kEye1Width, assets::kEye1Height, "eye1"},
+    {assets::kEye2Pixels, assets::kEye2Width, assets::kEye2Height, "eye2"},
+};
+constexpr int      kEyeFrameCount       = sizeof(kEyeFrames) / sizeof(kEyeFrames[0]);
+constexpr uint32_t kEyeCycleIntervalMs  = 5000;
+
+bool     eyeCycling     = false;
+int      eyeCycleIdx    = 0;
+uint32_t eyeCycleNextMs = 0;
+
+void renderEyeFrame(int idx) {
+    const EyeFrame& f = kEyeFrames[idx];
+    int ox            = (W - f.w) / 2;
+    int oy            = (H - f.h) / 2;
+
+    sprite.fillSprite(TFT_BLACK);
+    sprite.pushImage(ox, oy, f.w, f.h, f.pixels);
+    pushSpriteTo(0);
+
+    sprite.fillSprite(TFT_BLACK);
+    for (int y = 0; y < f.h; ++y) {
+        const uint16_t* src = f.pixels + (f.h - 1 - y) * f.w;
+        sprite.pushImage(ox, oy + y, f.w, 1, src);
+    }
+    pushSpriteTo(1);
+}
+
+void test9_eyeCycle() {
+    if (eyeCycling) {
+        eyeCycling = false;
+        Serial.println("\n[Action] eye cycle stopped");
+        return;
+    }
+    Serial.println("\n[Test] cycle eye bitmaps every 5s (press '9' to stop)");
+    initBoth();
+    if (!ensureSprite()) {
+        Serial.println("  cannot run -- sprite allocation failed");
+        return;
+    }
+    eyeCycling  = true;
+    eyeCycleIdx = 0;
+    Serial.printf("  -> %s\n", kEyeFrames[eyeCycleIdx].name);
+    renderEyeFrame(eyeCycleIdx);
+    eyeCycleNextMs = millis() + kEyeCycleIntervalMs;
+}
+
+void tickEyeCycle() {
+    if (!eyeCycling) return;
+    if ((int32_t)(millis() - eyeCycleNextMs) < 0) return;
+    eyeCycleIdx = (eyeCycleIdx + 1) % kEyeFrameCount;
+    Serial.printf("  -> %s\n", kEyeFrames[eyeCycleIdx].name);
+    renderEyeFrame(eyeCycleIdx);
+    eyeCycleNextMs = millis() + kEyeCycleIntervalMs;
+}
+
 // --- Misc ------------------------------------------------------------------
 
 bool gInvert = true;
@@ -493,6 +573,7 @@ void printHelp() {
     Serial.println("  6  Pattern gallery (hairlines, pixel grid, rects, ...)");
     Serial.println("  7  Code-path compare (drawPixel/fillRect/vline)");
     Serial.println("  8  Sprite pipeline (TFT_eSprite -> byteSwap -> drawBitmap16Data)");
+    Serial.println("  9  Cycle eye bitmaps every 5s (toggle; left eye mirrored)");
     Serial.println("  i  Toggle TFTchangeInvertMode on both");
     Serial.println("  t  Cycle common rotation 0/90/180/270 (tint knob)");
     Serial.println("  r  Re-init both panels");
@@ -516,6 +597,7 @@ void setup() {
 }
 
 void loop() {
+    tickEyeCycle();
     if (Serial.available() <= 0) return;
     int c = Serial.read();
     if (c < 0) return;
@@ -543,6 +625,9 @@ void loop() {
             break;
         case '8':
             test8_spritePipeline();
+            break;
+        case '9':
+            test9_eyeCycle();
             break;
         case 'i':
         case 'I':
