@@ -56,6 +56,32 @@ inline void rotate180InPlace(uint16_t* buf, size_t pixels) {
         buf[j]     = t;
     }
 }
+
+// In-place 90° CW rotation of a square N×N RGB565 buffer. Walks the
+// buffer in concentric rings of 4-pixel cycles: top → right → bottom →
+// left → top. With the panel's MADCTL at Degrees_0, the GC9D01 displays
+// buffer pixels rotated 90° CCW visually; pre-rotating the sprite 90°
+// CW here cancels that out so content drawn in upright sprite
+// coordinates appears upright on the panel. Same logic that
+// tools/bmp_to_header.py applies at conversion time for the BMP assets;
+// done here at runtime for the procedurally rendered sprite.
+inline void rotate90CWInPlace(uint16_t* buf, int n) {
+    for (int layer = 0; layer < n / 2; ++layer) {
+        const int first = layer;
+        const int last  = n - 1 - layer;
+        for (int i = first; i < last; ++i) {
+            const int offset = i - first;
+            // 4-cycle around the ring, CW: top←left, left←bottom,
+            // bottom←right, right←(saved top). Pixel at (x, 0) ends up
+            // at (n-1, x), which is the 90° CW transform (x,y)→(n-1-y,x).
+            uint16_t   tmp                       = buf[first * n + i];
+            buf[first * n + i]                   = buf[(last - offset) * n + first];
+            buf[(last - offset) * n + first]     = buf[last * n + (last - offset)];
+            buf[last * n + (last - offset)]      = buf[i * n + last];
+            buf[i * n + last]                    = tmp;
+        }
+    }
+}
 }  // namespace
 
 RobotEyes::RobotEyes() = default;
@@ -111,7 +137,7 @@ void RobotEyes::setRotation(GC9D01_LTSM::display_rotate_e r) {
     lastPupilDY     = 999;
 }
 
-void RobotEyes::pushSprite(int idx) {
+void RobotEyes::pushSprite(int idx, bool alreadyRotated) {
     // TFT_eSprite at 16bpp pre-byte-swaps every write (drawPixel /
     // fillRect / fillSmoothCircle ... all do `color = (color >> 8) |
     // (color << 8)` before storing — see Extensions/Sprite.cpp:1642).
@@ -123,8 +149,18 @@ void RobotEyes::pushSprite(int idx) {
     // — orders of magnitude slower than the SPI clock can sustain. We
     // set the window once for the whole frame (RAMWR included) and
     // burst the buffer in one SPI.writeBytes (FIFO + DMA on ESP32-S3).
+    //
+    // alreadyRotated=false (default): sprite was drawn in upright
+    // coordinates, so we rotate the buffer 90° CW before push to cancel
+    // the panel's intrinsic 90° CCW display orientation.
+    // alreadyRotated=true: buffer is already in panel-native orientation
+    // (e.g. BMP assets pre-rotated by tools/bmp_to_header.py); skip the
+    // 90° rotation and only apply the per-panel 180° flip.
     uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer());
     if (!buf) return;
+    if (!alreadyRotated) {
+        rotate90CWInPlace(buf, kDisplayW);
+    }
     if (idx == kFlipPanel) {
         rotate180InPlace(buf, (size_t)kDisplayW * kDisplayH);
     }
@@ -151,10 +187,12 @@ void RobotEyes::showTestImage() {
     constexpr int ox = (kDisplayW - kEye1Width) / 2;
     constexpr int oy = (kDisplayH - kEye1Height) / 2;
 
-    // Left eye: image as-is.
+    // Left eye: image as-is. The BMP asset is pre-rotated by
+    // tools/bmp_to_header.py to match the panel's native orientation,
+    // so pushSprite skips its 90° CW rotation step here.
     eyeSprite.fillSprite(kBgColor);
     eyeSprite.pushImage(ox, oy, kEye1Width, kEye1Height, kEye1Pixels);
-    pushSprite(0);
+    pushSprite(0, /*alreadyRotated=*/true);
 
     // Right eye: same image with columns reversed. pushImage doesn't
     // expose an H-flip flag, so build one row at a time.
@@ -167,7 +205,7 @@ void RobotEyes::showTestImage() {
         }
         eyeSprite.pushImage(ox, oy + y, kEye1Width, 1, rowBuf);
     }
-    pushSprite(1);
+    pushSprite(1, /*alreadyRotated=*/true);
 
     // Hold the frame until something else (an expression change) reclaims
     // the displays. Without this the next update() tick would redraw the

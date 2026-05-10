@@ -136,7 +136,7 @@ private:
     float pupilScale     = 1.0f;
 
     void initOneDisplay(int idx);
-    void pushSprite(int idx);
+    void pushSprite(int idx, bool alreadyRotated = false);
 
     void drawEye(bool isLeft, float openness, int pdx, int pdy);
     void drawBrow(bool isLeft);
