@@ -24,6 +24,7 @@
 
 #include "../assets/eye1_data.h"
 #include "../assets/eye2_data.h"
+#include "../assets/eye3_data.h"
 
 namespace {
 
@@ -98,19 +99,37 @@ bool ensureSprite() {
     return true;
 }
 
+// Bulk-push raw MSB-first RGB565 bytes to one panel, bypassing
+// drawBitmap16Data. The driver's drawBitmap16Data re-issues setAddrWindow
+// per row and then drains the row via spiWriteDataBuffer, which itself
+// calls SPI.transfer(b) byte-by-byte — order(s) of magnitude slower than
+// the SPI clock can sustain. We use the public setAddrWindow once for
+// the whole frame, then drive the SPI transaction directly with
+// SPI.writeBytes (FIFO + DMA on ESP32-S3). DC stays HIGH for the entire
+// data burst because no command interrupts it.
+void pushFast(int idx, const uint8_t* buf, size_t bytes) {
+    panel[idx].setAddrWindow(0, 0, W - 1, H - 1);  // sets window + RAMWR
+    SPI.beginTransaction(SPISettings(kSpiFreqHz, MSBFIRST, SPI_MODE0));
+    digitalWrite(TFT_DC, HIGH);
+    digitalWrite(CS[idx], LOW);
+    SPI.writeBytes(buf, bytes);
+    digitalWrite(CS[idx], HIGH);
+    SPI.endTransaction();
+}
+
 // Push the sprite buffer to one panel — same path RobotEyes uses in
 // production. TFT_eSprite at 16bpp pre-byte-swaps every write before
 // storing (Sprite.cpp:1642), so the buffer is already MSB-first in
-// memory and goes to drawBitmap16Data verbatim. The kFlipPanel index
-// gets a 180° in-place rotation so its visual orientation matches the
-// other eye despite the physical mounting being 180° opposed.
+// memory and goes straight to the SPI bus. The kFlipPanel index gets a
+// 180° in-place rotation so its visual orientation matches the other
+// eye despite the physical mounting being 180° opposed.
 void pushSpriteTo(int idx) {
     uint16_t* buf = static_cast<uint16_t*>(sprite.getPointer());
     if (!buf) return;
     if (idx == kFlipPanel) {
         rotate180InPlace(buf, (size_t)W * H);
     }
-    panel[idx].drawBitmap16Data(0, 0, reinterpret_cast<const uint8_t*>(buf), W, H);
+    pushFast(idx, reinterpret_cast<const uint8_t*>(buf), (size_t)W * H * 2);
 }
 
 // Rapid color cycle on the given panel — sanity check that pixel writes
@@ -448,9 +467,10 @@ struct EyeFrame {
 constexpr EyeFrame kEyeFrames[] = {
     {assets::kEye1Pixels, assets::kEye1Width, assets::kEye1Height, "eye1"},
     {assets::kEye2Pixels, assets::kEye2Width, assets::kEye2Height, "eye2"},
+    {assets::kEye3Pixels, assets::kEye3Width, assets::kEye3Height, "eye3"},
 };
-constexpr int      kEyeFrameCount       = sizeof(kEyeFrames) / sizeof(kEyeFrames[0]);
-constexpr uint32_t kEyeCycleIntervalMs  = 5000;
+constexpr int      kEyeFrameCount      = sizeof(kEyeFrames) / sizeof(kEyeFrames[0]);
+constexpr uint32_t kEyeCycleIntervalMs = 5000;
 
 bool     eyeCycling     = false;
 int      eyeCycleIdx    = 0;
