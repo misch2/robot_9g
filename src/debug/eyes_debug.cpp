@@ -2,16 +2,15 @@
 // main robot build via build_src_filter — see platformio.ini's
 // [env:esp32s3_eyes_debug].
 //
-// Mirrors the production render path used by RobotEyes:
-//   • GC9D01_LTSM owns each panel (init, address windows, pixel push).
+// Mirrors the production render path used by RobotEyes — sprite/bitmap
+// only, no per-pixel panel APIs:
+//   • GC9D01_LTSM owns each panel only for init + setAddrWindow.
 //   • TFT_eSPI is included only for TFT_eSprite — the offscreen 160×160
 //     RGB565 buffer where antialiased shapes are drawn — and is never
 //     init()'d as a panel itself.
-//   • Each frame: render → byte-swap to MSB-first → drawBitmap16Data.
-//
-// The earlier version of this sketch debugged a hand-ported GC9D01
-// driver in our vendored TFT_eSPI fork; with GC9D01_LTSM doing the panel
-// work properly, the alt-init / config-probe / dual-gate tests are gone.
+//   • Each frame: render into sprite → setAddrWindow once → SPI bulk
+//     write the whole buffer (FIFO + DMA), bypassing the driver's
+//     per-row / per-byte SPI loops.
 //
 //   pio run -e esp32s3_eyes_debug -t upload -t monitor
 //
@@ -34,21 +33,19 @@ constexpr int RST[2] = {PIN_TFT_RST1, PIN_TFT_RST2};
 constexpr int W = TFT_WIDTH;
 constexpr int H = TFT_HEIGHT;
 
-constexpr uint32_t kSpiFreqHz = 40000000;
+constexpr uint32_t kSpiFreqHz = 80000000;
 
 // Both panels share one MADCTL rotation so they share the same tint
 // (cheap GC9D01 modules show subtle color shifts depending on MX/MY/ML
-// bits — same bits both sides, same shift). To compensate for the
-// panels being mounted 180° opposed, panel 1's content gets a 180° SW
-// flip in test 8 (matches RobotEyes' production path). Tests 1–7 draw
-// directly via panel.fillRect/fillCircle/etc, so the two physical eyes
-// will show the same content rotated 180° relative to each other —
-// that's expected. The 't' key cycles this rotation through all four
-// values so you can pick whichever tint you like.
+// bits — same bits both sides, same shift). The panels are mounted 180°
+// opposed, and pushSpriteTo() compensates for that with an in-place
+// rotate of the buffer for kFlipPanel before the SPI burst. The 't' key
+// cycles this rotation through all four values so you can pick whichever
+// tint you like.
 GC9D01_LTSM::display_rotate_e commonRotation = GC9D01_LTSM::Degrees_0;
 
-// Which panel gets 180°-flipped in software for sprite-path tests.
-// Mirrors RobotEyes' kFlipPanel.
+// Which panel gets 180°-flipped in software. Mirrors RobotEyes'
+// kFlipPanel.
 constexpr int kFlipPanel = 1;
 
 GC9D01_LTSM panel[2];
