@@ -183,7 +183,7 @@ void setup() {
     robotFace.begin();
     servoManager.begin();
     robotMotion.begin();
-    webControl.begin();
+    // webControl.begin(); // FIXME temporarily disabled while looking for an intermittent flickering cause
 
     // FIXME debugging
     // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
@@ -207,7 +207,7 @@ void loop() {
     processSerialInput();
     servoMotion.update();
     robotMotion.update();
-    webControl.update();
+    // webControl.update(); // FIXME temporarily disabled while looking for an intermittent flickering cause
 
     // Show a Concentrating face while the robot is moving; restore the
     // prior expression once idle. Edge-detected so we don't fight 'm'.
