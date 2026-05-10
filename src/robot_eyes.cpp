@@ -24,10 +24,12 @@ constexpr uint32_t kLookMaxGapMs = 4500;
 constexpr float kPupilDrift      = 16.0f;
 constexpr float kPupilEase       = 0.7f;
 
-// Same SPI freq we used with TFT_eSPI for these panels. GC9D01 spec is
-// good to ~50 MHz; 40 MHz is comfortable headroom on the ESP32-S3 SPI
-// bus given the wiring (no length compensation, no MISO).
-constexpr uint32_t kSpiFreqHz = 40000000;
+// 80 MHz is the ESP32-S3 SPI peripheral's max practical clock and the
+// GC9D01 modules tolerate it cleanly with our short flex wiring. At 80
+// MHz a 51 KB frame transfers in ~5.1 ms; with the bulk-write path in
+// pushSprite() that puts the 2-eye SPI ceiling at ~95 fps. Drop to
+// 60 MHz if a future cable layout shows signal-integrity glitches.
+constexpr uint32_t kSpiFreqHz = 80000000;
 
 // Per-eye CS/RST. PIN_TFT_DC is shared (single GPIO line into both
 // panels). Index 0 == left eye, 1 == right eye.
@@ -114,15 +116,26 @@ void RobotEyes::pushSprite(int idx) {
     // fillRect / fillSmoothCircle ... all do `color = (color >> 8) |
     // (color << 8)` before storing — see Extensions/Sprite.cpp:1642).
     // So the sprite buffer is already laid out MSB-first in memory,
-    // which is exactly the byte order GC9D01_LTSM streams to the
-    // panel — hand it over verbatim, no swap.
+    // which is exactly the byte order the panel expects on the wire.
+    //
+    // Bypass GC9D01_LTSM::drawBitmap16Data, which calls setAddrWindow
+    // per row and then drains the row via SPI.transfer(b) byte-by-byte
+    // — orders of magnitude slower than the SPI clock can sustain. We
+    // set the window once for the whole frame (RAMWR included) and
+    // burst the buffer in one SPI.writeBytes (FIFO + DMA on ESP32-S3).
     uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer());
     if (!buf) return;
     if (idx == kFlipPanel) {
         rotate180InPlace(buf, (size_t)kDisplayW * kDisplayH);
     }
-    panel[idx].drawBitmap16Data(0, 0, reinterpret_cast<const uint8_t*>(buf),
-                                kDisplayW, kDisplayH);
+    panel[idx].setAddrWindow(0, 0, kDisplayW - 1, kDisplayH - 1);
+    SPI.beginTransaction(SPISettings(kSpiFreqHz, MSBFIRST, SPI_MODE0));
+    digitalWrite(TFT_DC, HIGH);
+    digitalWrite(kCsPin[idx], LOW);
+    SPI.writeBytes(reinterpret_cast<const uint8_t*>(buf),
+                   (size_t)kDisplayW * kDisplayH * 2);
+    digitalWrite(kCsPin[idx], HIGH);
+    SPI.endTransaction();
 }
 
 void RobotEyes::setExpression(Expression e) {

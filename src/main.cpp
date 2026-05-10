@@ -43,6 +43,9 @@ static void printHelp() {
     Serial.println("   n     Shake head 'no'");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
+#ifdef ROBOT_FACE_VARIANT_EYES
+    Serial.println("   9     Show eye1.bmp test image (right eye horizontally flipped)");
+#endif
     Serial.println("   ?     This help");
     Serial.println(" Servo pin mapping:");
     for (const ServoSpec& spec : kServos) {
@@ -141,6 +144,13 @@ static void handleKey(char c) {
                           RobotFace::expressionName(robotFace.getExpression()));
             break;
 
+#ifdef ROBOT_FACE_VARIANT_EYES
+        case '9':
+            robotFace.showTestImage();
+            Serial.println("Showing eye1.bmp on both eyes (right eye flipped)");
+            break;
+#endif
+
         case '?':
             printHelp();
             break;
@@ -176,7 +186,7 @@ void setup() {
     webControl.begin();
 
     // FIXME debugging
-    robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
+    // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
 
     // leg movement tuning
     robotMotion.config.liftFraction   = 0.67f;  // 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
