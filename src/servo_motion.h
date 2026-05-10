@@ -19,9 +19,9 @@ class ServoMotion {
 public:
     explicit ServoMotion(ServoManager& manager) : manager(manager) {}
 
-    void moveTo(ServoId id, float angle, uint32_t durationMs, Easing easing = Easing::EaseInOut);
+    void moveTo(ServoId id, float angle, uint32_t durationMs, Easing easing = Easing::EaseOut);
     void moveToFraction(ServoId id, float fraction, uint32_t durationMs,
-                        Easing easing = Easing::EaseInOut);
+                        Easing easing = Easing::EaseOut);
     void update();
 
     bool isIdle() const;
@@ -36,7 +36,7 @@ private:
         float targetAngle = 0.0f;
         uint32_t startMs = 0;
         uint32_t durationMs = 0;
-        Easing easing = Easing::EaseInOut;
+        Easing easing = Easing::EaseOut;
     };
 
     ServoManager& manager;
