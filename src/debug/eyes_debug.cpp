@@ -521,6 +521,87 @@ void tickEyeCycle() {
     eyeCycleNextMs = millis() + kEyeCycleIntervalMs;
 }
 
+// --- FPS benchmark ---------------------------------------------------------
+// Two phases, ~3s each:
+//   A) Pure SPI throughput: alternate two pre-rendered sprite buffers and push
+//      to both panels. Measures the cost of two drawBitmap-equivalent SPI
+//      bursts per frame plus the rotate180 on D1.
+//   B) Full pipeline: per frame, fillSprite + draw a small animated shape +
+//      push to both panels. Includes TFT_eSprite render cost.
+// Reports frames/second for each (one frame = both panels updated).
+
+void test10_fpsBench() {
+    Serial.println("\n[Test] FPS benchmark");
+    initBoth();
+    if (!ensureSprite()) {
+        Serial.println("  cannot run -- sprite allocation failed");
+        return;
+    }
+    constexpr uint32_t kPhaseMs = 3000;
+
+    // --- Phase A: pure SPI push throughput.
+    // Build two static buffers (DMA-capable internal RAM) so we alternate
+    // content without touching the sprite. Pushing identical buffers each
+    // frame would be honest SPI throughput, but alternating proves the
+    // panel actually latches new pixels.
+    constexpr size_t kFrameBytes = (size_t)W * H * 2;
+    uint8_t* bufA = (uint8_t*)heap_caps_malloc(kFrameBytes, MALLOC_CAP_DMA);
+    uint8_t* bufB = (uint8_t*)heap_caps_malloc(kFrameBytes, MALLOC_CAP_DMA);
+    if (!bufA || !bufB) {
+        Serial.println("  cannot run -- DMA buffer alloc failed");
+        free(bufA);
+        free(bufB);
+        return;
+    }
+    // Fill with two distinguishable patterns (MSB-first RGB565).
+    for (size_t i = 0; i < kFrameBytes; i += 2) {
+        bufA[i]     = 0xF8;  // red high byte
+        bufA[i + 1] = 0x00;
+        bufB[i]     = 0x00;
+        bufB[i + 1] = 0x1F;  // blue low byte
+    }
+    Serial.printf("  Phase A (pure SPI push, %u-byte frames): running %lus...\n",
+                  (unsigned)kFrameBytes, (unsigned long)(kPhaseMs / 1000));
+    uint32_t startA  = millis();
+    uint32_t framesA = 0;
+    while (millis() - startA < kPhaseMs) {
+        const uint8_t* buf = (framesA & 1) ? bufB : bufA;
+        pushFast(0, buf, kFrameBytes);
+        pushFast(1, buf, kFrameBytes);
+        ++framesA;
+    }
+    uint32_t elapsedA = millis() - startA;
+    free(bufA);
+    free(bufB);
+
+    // --- Phase B: full sprite pipeline.
+    Serial.printf("  Phase B (sprite render + push): running %lus...\n",
+                  (unsigned long)(kPhaseMs / 1000));
+    uint32_t startB  = millis();
+    uint32_t framesB = 0;
+    while (millis() - startB < kPhaseMs) {
+        sprite.fillSprite(TFT_BLACK);
+        // Animated circle so the render isn't trivially constant.
+        int cx = W / 2 + (int)((framesB * 3) % W) - W / 2;
+        sprite.fillSmoothCircle(cx, H / 2, 30, TFT_GREEN, TFT_BLACK);
+        pushSpriteTo(0);
+        pushSpriteTo(1);
+        ++framesB;
+    }
+    uint32_t elapsedB = millis() - startB;
+
+    float fpsA       = framesA * 1000.0f / elapsedA;
+    float fpsB       = framesB * 1000.0f / elapsedB;
+    float bytesPerSA = framesA * 2.0f * kFrameBytes * 1000.0f / elapsedA;
+    Serial.printf("  Phase A: %lu frames in %lu ms = %.1f fps  (~%.1f MB/s SPI)\n",
+                  (unsigned long)framesA, (unsigned long)elapsedA, fpsA, bytesPerSA / 1e6f);
+    Serial.printf("  Phase B: %lu frames in %lu ms = %.1f fps  (sprite render included)\n",
+                  (unsigned long)framesB, (unsigned long)elapsedB, fpsB);
+    Serial.printf("  SPI clock = %lu Hz; theoretical pure-SPI ceiling for 2x %u-byte frames = %.1f fps\n",
+                  (unsigned long)kSpiFreqHz, (unsigned)kFrameBytes,
+                  (float)kSpiFreqHz / (8.0f * 2.0f * kFrameBytes));
+}
+
 // --- Misc ------------------------------------------------------------------
 
 bool gInvert = true;
@@ -594,6 +675,7 @@ void printHelp() {
     Serial.println("  7  Code-path compare (drawPixel/fillRect/vline)");
     Serial.println("  8  Sprite pipeline (TFT_eSprite -> byteSwap -> drawBitmap16Data)");
     Serial.println("  9  Cycle eye bitmaps every 5s (toggle; left eye mirrored)");
+    Serial.println("  f  FPS benchmark (pure SPI push + full sprite pipeline)");
     Serial.println("  i  Toggle TFTchangeInvertMode on both");
     Serial.println("  t  Cycle common rotation 0/90/180/270 (tint knob)");
     Serial.println("  r  Re-init both panels");
@@ -648,6 +730,10 @@ void loop() {
             break;
         case '9':
             test9_eyeCycle();
+            break;
+        case 'f':
+        case 'F':
+            test10_fpsBench();
             break;
         case 'i':
         case 'I':
