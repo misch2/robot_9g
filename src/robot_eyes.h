@@ -59,10 +59,12 @@ public:
     void setRotation(GC9D01_LTSM::display_rotate_e r);
     GC9D01_LTSM::display_rotate_e getRotation() const { return rotation; }
 
-    // Debug helper: blit assets/eye1_data.h onto both panels, with the
-    // right eye horizontally flipped. Freezes the expression renderer
-    // until the next setExpression() call.
-    void showTestImage();
+    // Debug helper: blit one of the eye*.bmp assets onto both panels, with
+    // the right eye horizontally flipped. Each call advances to the next
+    // asset in a 3-image cycle (eye1 → eye2 → eye3 → eye1 …) and returns
+    // the 1-based index of the image it just showed. Freezes the
+    // expression renderer until the next setExpression() call.
+    int showTestImage();
 
 private:
     // Each display is 160x160; the eye is centered with headroom above
@@ -99,6 +101,9 @@ private:
 
     // When true, update() suspends animation so the test image stays put.
     bool showingTestImage = false;
+
+    // Which asset showTestImage() will display on its next call (0..2).
+    uint8_t testImageIdx = 0;
 
     uint32_t lastUpdateMs = 0;
 

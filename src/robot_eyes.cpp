@@ -4,6 +4,8 @@
 #include <math.h>
 
 #include "assets/eye1_data.h"
+#include "assets/eye2_data.h"
+#include "assets/eye3_data.h"
 
 namespace {
 constexpr uint16_t kBgColor    = TFT_BLACK;
@@ -182,28 +184,44 @@ void RobotEyes::setExpression(Expression e) {
     applyExpressionModifiers();
 }
 
-void RobotEyes::showTestImage() {
+int RobotEyes::showTestImage() {
     using namespace assets;
-    constexpr int ox = (kDisplayW - kEye1Width) / 2;
-    constexpr int oy = (kDisplayH - kEye1Height) / 2;
+    struct EyeAsset {
+        int w;
+        int h;
+        const uint16_t* pixels;
+    };
+    static constexpr EyeAsset kAssets[] = {
+        {kEye1Width, kEye1Height, kEye1Pixels},
+        {kEye2Width, kEye2Height, kEye2Pixels},
+        {kEye3Width, kEye3Height, kEye3Pixels},
+    };
+    static_assert(sizeof(kAssets) / sizeof(kAssets[0]) == 3, "test-image cycle expects 3 assets");
+
+    const int idx = testImageIdx;
+    const EyeAsset& a = kAssets[idx];
+    const int ox = (kDisplayW - a.w) / 2;
+    const int oy = (kDisplayH - a.h) / 2;
 
     // Left eye: image as-is. The BMP asset is pre-rotated by
     // tools/bmp_to_header.py to match the panel's native orientation,
     // so pushSprite skips its 90° CW rotation step here.
     eyeSprite.fillSprite(kBgColor);
-    eyeSprite.pushImage(ox, oy, kEye1Width, kEye1Height, kEye1Pixels);
+    eyeSprite.pushImage(ox, oy, a.w, a.h, a.pixels);
     pushSprite(0, /*alreadyRotated=*/true);
 
     // Right eye: same image with columns reversed. pushImage doesn't
-    // expose an H-flip flag, so build one row at a time.
-    uint16_t rowBuf[kEye1Width];
+    // expose an H-flip flag, so build one row at a time. All three
+    // test assets are 160×160, so a fixed kDisplayW-wide stack buffer
+    // is sufficient.
+    uint16_t rowBuf[kDisplayW];
     eyeSprite.fillSprite(kBgColor);
-    for (int y = 0; y < kEye1Height; ++y) {
-        const uint16_t* src = kEye1Pixels + y * kEye1Width;
-        for (int x = 0; x < kEye1Width; ++x) {
-            rowBuf[x] = src[kEye1Width - 1 - x];
+    for (int y = 0; y < a.h; ++y) {
+        const uint16_t* src = a.pixels + y * a.w;
+        for (int x = 0; x < a.w; ++x) {
+            rowBuf[x] = src[a.w - 1 - x];
         }
-        eyeSprite.pushImage(ox, oy + y, kEye1Width, 1, rowBuf);
+        eyeSprite.pushImage(ox, oy + y, a.w, 1, rowBuf);
     }
     pushSprite(1, /*alreadyRotated=*/true);
 
@@ -211,6 +229,8 @@ void RobotEyes::showTestImage() {
     // the displays. Without this the next update() tick would redraw the
     // animated eye over the top.
     showingTestImage = true;
+    testImageIdx     = (testImageIdx + 1) % 3;
+    return idx + 1;  // 1-based for logging
 }
 
 void RobotEyes::applyExpressionModifiers() {

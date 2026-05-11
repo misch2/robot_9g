@@ -40,7 +40,7 @@ static void printHelp() {
     Serial.println("   n     Shake head 'no'");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
-    Serial.println("   9     Show eye1.bmp test image (right eye horizontally flipped)");
+    Serial.println("   9     Cycle eye1/eye2/eye3.bmp test image (right eye horizontally flipped)");
     Serial.println("   ?     This help");
     Serial.println(" Servo pin mapping:");
     for (const ServoSpec& spec : kServos) {
@@ -142,10 +142,11 @@ static void handleKey(char c) {
                           RobotFace::expressionName(robotFace.getExpression()));
             break;
 
-        case '9':
-            robotEyes.showTestImage();
-            Serial.println("Showing eye1.bmp on both eyes (right eye flipped)");
+        case '9': {
+            int n = robotEyes.showTestImage();
+            Serial.printf("Showing eye%d.bmp on both eyes (right eye flipped)\n", n);
             break;
+        }
 
         case '?':
             printHelp();
