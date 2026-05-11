@@ -45,6 +45,16 @@ The codebase is intentionally small. The layers, lowest first:
   - `dance_mover.{h,cpp}` — lift each leg clockwise, hold `danceHoldMs`, drop.
   - `pose_mover.{h,cpp}` — drive every relevant servo to one of the static `Pose::Stand|Crouch|Sit` layouts (Crouch leaves Translation/Rotation alone), done when `motion.isIdle()`.
 
+Display variants — selected at compile time via `-DROBOT_FACE_VARIANT_EYES`:
+- `src/robot_face.{h,cpp}` — single GC9A01 240×240 round panel, full face (eyes + mouth + brows).
+- `src/robot_eyes.{h,cpp}` — two GC9D01 160×160 panels (one per eye). Shared SPI bus + DC, per-panel CS/RST. Renders into a single `TFT_eSprite` (160×160 RGB565), which is then bulk-pushed via `SPI.writeBytes` after one `setAddrWindow(0,0,W-1,H-1)` per frame — bypassing `GC9D01_LTSM::drawBitmap16Data` (per-row addr-window + per-byte SPI). Both panels stay at MADCTL `Degrees_0` (matching tint); panel 1 is mounted physically 180° opposed and gets a 180° in-place buffer flip in software before push.
+- `src/debug/eyes_debug.cpp` — standalone sketch (`pio run -e esp32s3_eyes_debug`) for the dual-display wiring; mirrors the production sprite/SPI path but with menu-driven test patterns and a tint-cycler.
+
+Orientation contract for `RobotEyes`: with MADCTL `Degrees_0` the GC9D01 displays the buffer rotated 90° CCW visually. Two paths cancel that out:
+- Procedurally drawn sprites (eye capsule, brow, …): drawn in upright sprite coordinates, then `pushSprite()` applies an in-place 90° CW rotation before SPI burst (default `alreadyRotated=false`).
+- BMP assets in `src/assets/eye*_data.h`: `tools/bmp_to_header.py` pre-rotates 90° CW at conversion time, so `showTestImage()` and any other BMP path calls `pushSprite(idx, /*alreadyRotated=*/true)` to skip the runtime rotation.
+After this, the per-panel 180° flip for the physically opposed panel still applies on top.
+
 `config.h` holds compile-time constants intrinsic to the firmware logic (default 500–2500 µs pulse range) and the `ServoId` enum that defines which logical servos exist. Anything tied to the specific board/wiring lives in `platformio.ini` build flags instead.
 
 Libraries pinned in `platformio.ini`: `bodmer/TFT_eSPI`, `tzapu/WiFiManager`. WiFi/display code is not yet integrated into `main.cpp`. Servos are driven via the framework's built-in LEDC API — no servo library dependency.
@@ -52,3 +62,26 @@ Libraries pinned in `platformio.ini`: `bodmer/TFT_eSPI`, `tzapu/WiFiManager`. Wi
 ## Style
 
 `.clang-format` is Google-based with these deviations: 4-space indent, no column limit, `SortIncludes: false` (header order is intentional — keep `Arduino.h` first), aligned consecutive `#define`s and assignments, single-line `if` allowed without `else`.
+
+## Measurements and statistics:
+
+40 MHz SPI:
+
+```
+[Test] FPS benchmark
+  Phase A (pure SPI push, 51200-byte frames): running 3s...
+  Phase B (sprite render + push): running 3s...
+  Phase A: 127 frames in 3000 ms = 42.3 fps  (~4.3 MB/s SPI)
+  Phase B: 111 frames in 3004 ms = 37.0 fps  (sprite render included)
+  SPI clock = 40000000 Hz; theoretical pure-SPI ceiling for 2x 51200-byte frames = 48.8 fps
+```
+
+60 MHz SPI:
+```
+[Test] FPS benchmark
+  Phase A (pure SPI push, 51200-byte frames): running 3s...
+  Phase B (sprite render + push): running 3s...
+  Phase A: 224 frames in 3002 ms = 74.6 fps  (~7.6 MB/s SPI)
+  Phase B: 179 frames in 3016 ms = 59.4 fps  (sprite render included)
+  SPI clock = 80000000 Hz; theoretical pure-SPI ceiling for 2x 51200-byte frames = 97.7 fps
+```
