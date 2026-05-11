@@ -3,9 +3,10 @@
 namespace {
 constexpr uint16_t kBgColor    = TFT_BLACK;
 constexpr uint16_t kMouthColor = TFT_CYAN;
+constexpr uint16_t kNoseColor  = TFT_PINK;
 
-// Mouth/brow stroke thickness (for arc drawing).
-constexpr int kArcThickness = 6;
+// Mouth arc stroke thickness.
+constexpr int kArcThickness = 8;
 }  // namespace
 
 RobotFace::RobotFace() = default;
@@ -14,6 +15,9 @@ void RobotFace::begin() {
     tft.init();
     tft.setRotation(TFT_ROTATION);
     tft.fillScreen(kBgColor);
+    // Nose never changes with expression, so draw once. drawMouth() only
+    // clears the mouth bounding box, which sits below the nose region.
+    drawNose();
     // expressionDirty starts true so the first update() draws the mouth.
 }
 
@@ -61,6 +65,32 @@ void RobotFace::update() {
     expressionDirty = false;
 }
 
+void RobotFace::drawNose() {
+    // Animal-style nose: rounded rectangle "shoulders" on top, tapering
+    // into a triangular apex below. A thin philtrum line drops from the
+    // apex toward the mouth.
+    constexpr int kCornerR = 12;
+
+    const int rectH   = (kNoseH * 6) / 10;
+    const int rectTop = kNoseCenterY - kNoseH / 2;
+    tft.fillSmoothRoundRect(kNoseCenterX - kNoseW / 2, rectTop,
+                            kNoseW, rectH, kCornerR, kNoseColor, kBgColor);
+
+    // Overlap the rect's bottom by kCornerR/2 so its rounded bottom
+    // corners are covered by the triangle.
+    const int triTop = rectTop + rectH - kCornerR / 2;
+    tft.fillTriangle(kNoseCenterX - kNoseW / 2, triTop,
+                     kNoseCenterX + kNoseW / 2, triTop,
+                     kNoseCenterX, kNoseCenterY + kNoseH / 2,
+                     kNoseColor);
+
+    // Philtrum — thin vertical line from the nose apex toward (but not
+    // into) the mouth bounding box, which gets cleared on every redraw.
+    tft.drawWideLine(kNoseCenterX, kNoseCenterY + kNoseH / 2,
+                     kNoseCenterX, kMouthCenterY - kMouthBoxH / 2 - 2,
+                     3, kNoseColor, kBgColor);
+}
+
 void RobotFace::drawMouth() {
     // Clear the mouth bounding box so the previous expression's pixels go.
     int boxX = kMouthCenterX - kMouthBoxW / 2;
@@ -77,9 +107,9 @@ void RobotFace::drawMouth() {
     switch (expression) {
         case Expression::Happy: {
             // Big pronounced smile.
-            int r      = 45;
+            int r      = 60;
             int cx     = kMouthCenterX;
-            int cy     = kMouthCenterY - 27;  // circle center above mouth
+            int cy     = kMouthCenterY - 36;  // circle center above mouth
             int spread = 55;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
                               360 - spread, 360, kMouthColor, kBgColor, true);
@@ -89,10 +119,10 @@ void RobotFace::drawMouth() {
         }
         case Expression::Neutral: {
             // Very subtle smile (large radius, small spread = gentle curve).
-            int r      = 100;
+            int r      = 130;
             int cx     = kMouthCenterX;
-            int cy     = kMouthCenterY - 95;
-            int spread = 14;
+            int cy     = kMouthCenterY - 123;
+            int spread = 18;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
                               360 - spread, 360, kMouthColor, kBgColor);
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
@@ -101,10 +131,10 @@ void RobotFace::drawMouth() {
         }
         case Expression::Curious: {
             // Slight smile, shifted right for an asymmetric look.
-            int r      = 80;
-            int cx     = kMouthCenterX + 6;
-            int cy     = kMouthCenterY - 67;
-            int spread = 22;
+            int r      = 105;
+            int cx     = kMouthCenterX + 8;
+            int cy     = kMouthCenterY - 88;
+            int spread = 28;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
                               360 - spread, 360, kMouthColor, kBgColor);
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
@@ -113,7 +143,7 @@ void RobotFace::drawMouth() {
         }
         case Expression::Concentrating: {
             // Flat tight line.
-            int w = 50, h = 6;
+            int w = 68, h = 8;
             tft.fillSmoothRoundRect(kMouthCenterX - w / 2,
                                     kMouthCenterY - h / 2,
                                     w, h, h / 2, kMouthColor, kBgColor);
@@ -121,9 +151,9 @@ void RobotFace::drawMouth() {
         }
         case Expression::Worried: {
             // Subtle frown.
-            int r      = 60;
+            int r      = 78;
             int cx     = kMouthCenterX;
-            int cy     = kMouthCenterY + 45;  // circle center below mouth
+            int cy     = kMouthCenterY + 59;  // circle center below mouth
             int spread = 35;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
                               180 - spread, 180 + spread,
@@ -132,9 +162,9 @@ void RobotFace::drawMouth() {
         }
         case Expression::Sad: {
             // Deeper, wider frown.
-            int r      = 50;
+            int r      = 65;
             int cx     = kMouthCenterX;
-            int cy     = kMouthCenterY + 38;
+            int cy     = kMouthCenterY + 50;
             int spread = 55;
             tft.drawSmoothArc(cx, cy, r, r - kArcThickness,
                               180 - spread, 180 + spread,
@@ -143,10 +173,10 @@ void RobotFace::drawMouth() {
         }
         case Expression::Surprised: {
             // Open round mouth (ring shape).
-            int r = 12;
+            int r = 16;
             tft.fillSmoothCircle(kMouthCenterX, kMouthCenterY, r,
                                  kMouthColor, kBgColor);
-            tft.fillSmoothCircle(kMouthCenterX, kMouthCenterY, r - 5,
+            tft.fillSmoothCircle(kMouthCenterX, kMouthCenterY, r - 7,
                                  kBgColor, kMouthColor);
             break;
         }

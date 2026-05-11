@@ -203,26 +203,15 @@ int RobotEyes::showTestImage() {
     const int ox = (kDisplayW - a.w) / 2;
     const int oy = (kDisplayH - a.h) / 2;
 
-    // Left eye: image as-is. The BMP asset is pre-rotated by
+    // Same image on both panels. The BMP asset is pre-rotated by
     // tools/bmp_to_header.py to match the panel's native orientation,
-    // so pushSprite skips its 90° CW rotation step here.
+    // so pushSprite skips its 90° CW rotation step here. pushSprite()
+    // applies a 180° in-place flip on kFlipPanel to compensate for that
+    // panel's physical 180° mounting; the non-flipped panel must be
+    // pushed first because the flip mutates the buffer in place.
     eyeSprite.fillSprite(kBgColor);
     eyeSprite.pushImage(ox, oy, a.w, a.h, a.pixels);
     pushSprite(0, /*alreadyRotated=*/true);
-
-    // Right eye: same image with columns reversed. pushImage doesn't
-    // expose an H-flip flag, so build one row at a time. All three
-    // test assets are 160×160, so a fixed kDisplayW-wide stack buffer
-    // is sufficient.
-    uint16_t rowBuf[kDisplayW];
-    eyeSprite.fillSprite(kBgColor);
-    for (int y = 0; y < a.h; ++y) {
-        const uint16_t* src = a.pixels + y * a.w;
-        for (int x = 0; x < a.w; ++x) {
-            rowBuf[x] = src[a.w - 1 - x];
-        }
-        eyeSprite.pushImage(ox, oy + y, a.w, 1, rowBuf);
-    }
     pushSprite(1, /*alreadyRotated=*/true);
 
     // Hold the frame until something else (an expression change) reclaims

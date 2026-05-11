@@ -39,17 +39,23 @@ public:
     static const char* expressionName(Expression e);
 
 private:
-    // Geometry. The TFT is 240x240; the mouth is centered horizontally and
-    // sits in the lower half of the panel.
+    // Geometry. The TFT is 240x240; nose sits in the upper-middle area
+    // and the mouth in the lower area, both centered horizontally.
+    static constexpr int kNoseCenterX = 120;
+    static constexpr int kNoseCenterY = 95;
+    static constexpr int kNoseW       = 64;
+    static constexpr int kNoseH       = 48;
+
     static constexpr int kMouthCenterX = 120;
-    static constexpr int kMouthCenterY = 175;
-    static constexpr int kMouthBoxW    = 140;
-    static constexpr int kMouthBoxH    = 60;
+    static constexpr int kMouthCenterY = 185;
+    static constexpr int kMouthBoxW    = 180;
+    static constexpr int kMouthBoxH    = 80;
 
     TFT_eSPI tft;
 
     Expression expression = Expression::Happy;
     bool expressionDirty  = true;  // forces full redraw on first frame
 
+    void drawNose();
     void drawMouth();
 };
