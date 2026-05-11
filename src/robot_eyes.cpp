@@ -91,7 +91,7 @@ void RobotEyes::begin() {
     // arg-less SPI.begin() inside GC9D01_LTSM::TFTHWSPIInitialize will
     // then short-circuit on the _spi-already-initialised guard and
     // leave our pin choices intact.
-    SPI.begin(TFT_SCLK, /*miso=*/-1, TFT_MOSI, /*ss=*/-1);
+    SPI.begin(PIN_EYES_SCLK, /*miso=*/-1, PIN_EYES_MOSI, /*ss=*/-1);
 
     initOneDisplay(0);
     initOneDisplay(1);
@@ -115,7 +115,7 @@ void RobotEyes::begin() {
 }
 
 void RobotEyes::initOneDisplay(int idx) {
-    panel[idx].TFTsetupGPIO_SPI(kSpiFreqHz, kRstPin[idx], TFT_DC, kCsPin[idx]);
+    panel[idx].TFTsetupGPIO_SPI(kSpiFreqHz, kRstPin[idx], PIN_EYES_DC, kCsPin[idx]);
     panel[idx].TFTInitScreenSize(kDisplayW, kDisplayH,
                                  GC9D01_LTSM::Resolution_e::RGB160x160_DualGate,
                                  GC9D01_LTSM::PixelFixMode_e::Both);
@@ -166,7 +166,7 @@ void RobotEyes::pushSprite(int idx, bool alreadyRotated) {
     }
     panel[idx].setAddrWindow(0, 0, kDisplayW - 1, kDisplayH - 1);
     SPI.beginTransaction(SPISettings(kSpiFreqHz, MSBFIRST, SPI_MODE0));
-    digitalWrite(TFT_DC, HIGH);
+    digitalWrite(PIN_EYES_DC, HIGH);
     digitalWrite(kCsPin[idx], LOW);
     SPI.writeBytes(reinterpret_cast<const uint8_t*>(buf),
                    (size_t)kDisplayW * kDisplayH * 2);
@@ -211,33 +211,6 @@ void RobotEyes::showTestImage() {
     // the displays. Without this the next update() tick would redraw the
     // animated eye over the top.
     showingTestImage = true;
-}
-
-void RobotEyes::cycleExpression() {
-    int next = (int)expression + 1;
-    if (next >= (int)Expression::_Count) next = 0;
-    setExpression((Expression)next);
-}
-
-const char* RobotEyes::expressionName(Expression e) {
-    switch (e) {
-        case Expression::Happy:
-            return "Happy";
-        case Expression::Neutral:
-            return "Neutral";
-        case Expression::Curious:
-            return "Curious";
-        case Expression::Concentrating:
-            return "Concentrating";
-        case Expression::Worried:
-            return "Worried";
-        case Expression::Sad:
-            return "Sad";
-        case Expression::Surprised:
-            return "Surprised";
-        default:
-            return "?";
-    }
 }
 
 void RobotEyes::applyExpressionModifiers() {

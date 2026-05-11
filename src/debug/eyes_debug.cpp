@@ -58,7 +58,7 @@ TFT_eSprite sprite{&tft};
 bool spriteAllocated = false;
 
 void initOne(int idx) {
-    panel[idx].TFTsetupGPIO_SPI(kSpiFreqHz, RST[idx], TFT_DC, CS[idx]);
+    panel[idx].TFTsetupGPIO_SPI(kSpiFreqHz, RST[idx], PIN_EYES_DC, CS[idx]);
     panel[idx].TFTInitScreenSize(W, H,
                                  GC9D01_LTSM::Resolution_e::RGB160x160_DualGate,
                                  GC9D01_LTSM::PixelFixMode_e::Both);
@@ -107,7 +107,7 @@ bool ensureSprite() {
 void pushFast(int idx, const uint8_t* buf, size_t bytes) {
     panel[idx].setAddrWindow(0, 0, W - 1, H - 1);  // sets window + RAMWR
     SPI.beginTransaction(SPISettings(kSpiFreqHz, MSBFIRST, SPI_MODE0));
-    digitalWrite(TFT_DC, HIGH);
+    digitalWrite(PIN_EYES_DC, HIGH);
     digitalWrite(CS[idx], LOW);
     SPI.writeBytes(buf, bytes);
     digitalWrite(CS[idx], HIGH);
@@ -404,7 +404,7 @@ void printHelp() {
     Serial.println("=== GC9D01_LTSM dual-display debug ===");
     Serial.printf("  CS1=%d  CS2=%d  RST1=%d  RST2=%d\n", CS[0], CS[1], RST[0], RST[1]);
     Serial.printf("  MOSI=%d  SCLK=%d  DC=%d  W=%d  H=%d  SPI=%lu Hz\n",
-                  TFT_MOSI, TFT_SCLK, TFT_DC, W, H, (unsigned long)kSpiFreqHz);
+                  PIN_EYES_MOSI, PIN_EYES_SCLK, PIN_EYES_DC, W, H, (unsigned long)kSpiFreqHz);
     Serial.printf("  Free heap: %u  PSRAM: %u\n",
                   (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getFreePsram());
     Serial.println();
@@ -428,7 +428,7 @@ void setup() {
     // Pin the SPI bus to our wiring before any panel touches it; the
     // arg-less SPI.begin() inside GC9D01_LTSM::TFTHWSPIInitialize will
     // then short-circuit on arduino-esp32's _spi guard.
-    SPI.begin(TFT_SCLK, /*miso=*/-1, TFT_MOSI, /*ss=*/-1);
+    SPI.begin(PIN_EYES_SCLK, /*miso=*/-1, PIN_EYES_MOSI, /*ss=*/-1);
 
     printHelp();
 }

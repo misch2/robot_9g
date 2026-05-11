@@ -45,10 +45,14 @@ The codebase is intentionally small. The layers, lowest first:
   - `dance_mover.{h,cpp}` — lift each leg clockwise, hold `danceHoldMs`, drop.
   - `pose_mover.{h,cpp}` — drive every relevant servo to one of the static `Pose::Stand|Crouch|Sit` layouts (Crouch leaves Translation/Rotation alone), done when `motion.isIdle()`.
 
-Display variants — selected at compile time via `-DROBOT_FACE_VARIANT_EYES`:
-- `src/robot_face.{h,cpp}` — single GC9A01 240×240 round panel, full face (eyes + mouth + brows).
-- `src/robot_eyes.{h,cpp}` — two GC9D01 160×160 panels (one per eye). Shared SPI bus + DC, per-panel CS/RST. Renders into a single `TFT_eSprite` (160×160 RGB565), which is then bulk-pushed via `SPI.writeBytes` after one `setAddrWindow(0,0,W-1,H-1)` per frame — bypassing `GC9D01_LTSM::drawBitmap16Data` (per-row addr-window + per-byte SPI). Both panels stay at MADCTL `Degrees_0` (matching tint); panel 1 is mounted physically 180° opposed and gets a 180° in-place buffer flip in software before push.
-- `src/debug/eyes_debug.cpp` — standalone sketch (`pio run -e esp32s3_eyes_debug`) for the dual-display wiring; mirrors the production sprite/SPI path but with menu-driven test patterns and a tint-cycler.
+Display layer — three panels driven simultaneously in the production env. Two SPI buses to avoid contention:
+- **HSPI** (via TFT_eSPI's `-DUSE_HSPI_PORT=1`): the mouth panel.
+- **FSPI** (the default Arduino `SPI` object): the two eye panels, sharing the bus + DC line with per-panel CS/RST.
+
+The two display classes are kept in sync from `main.cpp`, which forwards every `setExpression()` / `cycleExpression()` to both. `RobotEyes::Expression` is a `using` alias of `RobotFace::Expression`, so the enum is a single type and main.cpp passes one value to both classes:
+- `src/robot_face.{h,cpp}` — GC9A01 240×240 round panel. Currently mouth-only (the file is intentionally minimal so a nose can be added later); `update()` redraws only on expression change.
+- `src/robot_eyes.{h,cpp}` — two GC9D01 160×160 panels. Renders into a single `TFT_eSprite` (160×160 RGB565), then bulk-pushes via `SPI.writeBytes` after one `setAddrWindow(0,0,W-1,H-1)` per frame — bypassing `GC9D01_LTSM::drawBitmap16Data` (per-row addr-window + per-byte SPI). Both panels stay at MADCTL `Degrees_0` (matching tint); panel 1 is mounted physically 180° opposed and gets a 180° in-place buffer flip in software before push.
+- `src/debug/eyes_debug.cpp` — standalone sketch (`pio run -e esp32s3_eyes_debug`) for the dual-eye wiring; mirrors the production sprite/SPI path but with menu-driven test patterns and a tint-cycler. Uses the same `PIN_EYES_*` macros as `robot_eyes.cpp`.
 
 Orientation contract for `RobotEyes`: with MADCTL `Degrees_0` the GC9D01 displays the buffer rotated 90° CCW visually. Two paths cancel that out:
 - Procedurally drawn sprites (eye capsule, brow, …): drawn in upright sprite coordinates, then `pushSprite()` applies an in-place 90° CW rotation before SPI burst (default `alreadyRotated=false`).

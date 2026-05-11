@@ -4,9 +4,14 @@
 #include <GC9D01_LTSM.hpp>
 #include <TFT_eSPI.h>
 
-// Drives two GC9D01 160x160 round displays — one per eye — as an
-// alternative to RobotFace's single GC9A01. There's no mouth: expression
-// is conveyed through eye shape (squint, widen, droop) plus eyebrows.
+#include "robot_face.h"
+
+// Drives two GC9D01 160x160 round displays — one per eye — alongside
+// RobotFace's mouth on a separate GC9A01 panel. Expression is conveyed
+// jointly: this class draws the eye shape (squint, widen, droop) plus
+// eyebrows; RobotFace draws the mouth on the third panel. The shared
+// Expression enum below is an alias to RobotFace::Expression so main.cpp
+// can feed both classes from a single value without casting.
 //
 // Render pipeline: TFT_eSPI's TFT_eSprite owns an offscreen RGB565
 // buffer where the eye + brow are drawn with the lib's antialiased
@@ -18,29 +23,21 @@
 // over SPI with that panel's CS asserted. Then the sprite is re-rendered
 // for the second eye and pushed to the second panel.
 //
-// Hardware: shared SPI bus (DC, MOSI, SCLK), per-panel CS and RST. Each
-// GC9D01_LTSM instance owns its own CS/RST/DC pins and asserts CS only
-// during its own SPI transactions; the DC line is driven by whichever
-// instance is currently transmitting. We pre-call SPI.begin() with our
-// custom MOSI/SCLK pins before constructing the panels so the lib's
-// internal SPI.begin() (no-arg, called inside TFTGC9D01Initialize) is a
-// no-op due to arduino-esp32's _spi guard.
-//
-// Public API mirrors RobotFace 1:1 (same Expression enum, same method
-// signatures) so main.cpp can pick between them via `using RobotFace =
-// RobotEyes;` under -DROBOT_FACE_VARIANT_EYES.
+// Hardware: shared SPI bus (PIN_EYES_DC, PIN_EYES_MOSI, PIN_EYES_SCLK),
+// per-panel CS and RST. Each GC9D01_LTSM instance owns its own CS/RST/DC
+// pins and asserts CS only during its own SPI transactions; the DC line
+// is driven by whichever instance is currently transmitting. We pre-call
+// SPI.begin() with our custom MOSI/SCLK pins before constructing the
+// panels so the lib's internal SPI.begin() (no-arg, called inside
+// TFTGC9D01Initialize) is a no-op due to arduino-esp32's _spi guard.
+// This bus is the default Arduino `SPI` peripheral (FSPI on ESP32-S3);
+// the mouth panel's TFT_eSPI lives on HSPI (via -DUSE_HSPI_PORT=1) so
+// the two buses don't collide.
 class RobotEyes {
 public:
-    enum class Expression : uint8_t {
-        Happy,
-        Neutral,
-        Curious,
-        Concentrating,
-        Worried,
-        Sad,
-        Surprised,
-        _Count
-    };
+    // Single source of truth for facial expression — same type used by
+    // RobotFace. main.cpp forwards the same value to both classes.
+    using Expression = RobotFace::Expression;
 
     RobotEyes();
 
@@ -49,8 +46,6 @@ public:
 
     void setExpression(Expression e);
     Expression getExpression() const { return expression; }
-    void cycleExpression();
-    static const char* expressionName(Expression e);
 
     // Set the MADCTL rotation applied to BOTH panels. Same rotation on
     // both = same tint (cheap GC9D01 modules show a subtle per-MADCTL
@@ -66,7 +61,7 @@ public:
 
     // Debug helper: blit assets/eye1_data.h onto both panels, with the
     // right eye horizontally flipped. Freezes the expression renderer
-    // until setExpression() / cycleExpression() is called again.
+    // until the next setExpression() call.
     void showTestImage();
 
 private:

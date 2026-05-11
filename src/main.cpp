@@ -1,11 +1,7 @@
 #include <Arduino.h>
 #include "config.h"
-#ifdef ROBOT_FACE_VARIANT_EYES
 #include "robot_eyes.h"
-using RobotFace = RobotEyes;  // dual GC9D01 build — same API, different rendering
-#else
 #include "robot_face.h"
-#endif
 #include "robot_motion.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
@@ -15,6 +11,7 @@ ServoManager servoManager;
 ServoMotion servoMotion(servoManager);
 RobotMotion robotMotion(servoMotion);
 RobotFace robotFace;
+RobotEyes robotEyes;
 WebControl webControl(servoManager, servoMotion);
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
@@ -43,9 +40,7 @@ static void printHelp() {
     Serial.println("   n     Shake head 'no'");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
-#ifdef ROBOT_FACE_VARIANT_EYES
     Serial.println("   9     Show eye1.bmp test image (right eye horizontally flipped)");
-#endif
     Serial.println("   ?     This help");
     Serial.println(" Servo pin mapping:");
     for (const ServoSpec& spec : kServos) {
@@ -139,17 +134,18 @@ static void handleKey(char c) {
 
         // --- Display ---
         case 'm':
+            // RobotFace owns the canonical cycle logic (it knows which
+            // expressions to skip); mirror the result onto RobotEyes.
             robotFace.cycleExpression();
+            robotEyes.setExpression(robotFace.getExpression());
             Serial.printf("Expression: %s\n",
                           RobotFace::expressionName(robotFace.getExpression()));
             break;
 
-#ifdef ROBOT_FACE_VARIANT_EYES
         case '9':
-            robotFace.showTestImage();
+            robotEyes.showTestImage();
             Serial.println("Showing eye1.bmp on both eyes (right eye flipped)");
             break;
-#endif
 
         case '?':
             printHelp();
@@ -181,6 +177,7 @@ void setup() {
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
 
     robotFace.begin();
+    robotEyes.begin();
     servoManager.begin();
     robotMotion.begin();
     // webControl.begin(); // FIXME temporarily disabled while looking for an intermittent flickering cause
@@ -217,10 +214,13 @@ void loop() {
     if (wasIdle && !idle) {
         preMoveExpression = robotFace.getExpression();
         robotFace.setExpression(RobotFace::Expression::Concentrating);
+        robotEyes.setExpression(RobotFace::Expression::Concentrating);
     } else if (!wasIdle && idle) {
         robotFace.setExpression(preMoveExpression);
+        robotEyes.setExpression(preMoveExpression);
     }
     wasIdle = idle;
 
     robotFace.update();
+    robotEyes.update();
 }
