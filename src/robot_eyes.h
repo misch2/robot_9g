@@ -66,6 +66,12 @@ public:
     // expression renderer until the next setExpression() call.
     int showTestImage();
 
+    // Debug helper: paint the right eye green with a white "R" and the
+    // left eye red with a white "L" so the two physical panels can be
+    // distinguished at a glance. Freezes the expression renderer until
+    // the next setExpression() call.
+    void showIdentify();
+
 private:
     // Each display is 160x160; the eye is centered with headroom above
     // for an eyebrow.

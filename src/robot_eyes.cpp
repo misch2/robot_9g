@@ -34,9 +34,14 @@ constexpr float kPupilEase       = 0.7f;
 constexpr uint32_t kSpiFreqHz = 80000000;
 
 // Per-eye CS/RST. PIN_TFT_DC is shared (single GPIO line into both
-// panels). Index 0 == left eye, 1 == right eye.
+// panels). Index 0 == right eye (D0/CS1), 1 == left eye (D1/CS2).
 constexpr int kCsPin[2]  = {PIN_TFT_CS1, PIN_TFT_CS2};
 constexpr int kRstPin[2] = {PIN_TFT_RST1, PIN_TFT_RST2};
+
+// Which panel is the left eye. BMP assets are authored looking like the
+// right eye; the left eye displays a horizontally mirrored copy so iris
+// asymmetry / highlights mirror correctly across the face.
+constexpr int kLeftEyePanel = 1;
 
 // Which panel needs its sprite 180°-flipped in software. Panels are
 // physically mounted 180° opposed, so with both at the same MADCTL
@@ -56,6 +61,22 @@ inline void rotate180InPlace(uint16_t* buf, size_t pixels) {
         uint16_t t = buf[i];
         buf[i]     = buf[j];
         buf[j]     = t;
+    }
+}
+
+// In-place vertical mirror of an RGB565 buffer (swap rows top↔bottom).
+// For the left eye, this is the buffer-space operation that — combined
+// with the panel's intrinsic 90° CCW display rotation and the physical
+// 180° mounting — produces a horizontal visible mirror of the right eye.
+inline void mirrorVerticalInPlace(uint16_t* buf, int w, int h) {
+    for (int y = 0, y2 = h - 1; y < y2; ++y, --y2) {
+        uint16_t* a = buf + (size_t)y * w;
+        uint16_t* b = buf + (size_t)y2 * w;
+        for (int x = 0; x < w; ++x) {
+            uint16_t t = a[x];
+            a[x]      = b[x];
+            b[x]      = t;
+        }
     }
 }
 
@@ -203,15 +224,20 @@ int RobotEyes::showTestImage() {
     const int ox = (kDisplayW - a.w) / 2;
     const int oy = (kDisplayH - a.h) / 2;
 
-    // Same image on both panels. The BMP asset is pre-rotated by
-    // tools/bmp_to_header.py to match the panel's native orientation,
-    // so pushSprite skips its 90° CW rotation step here. pushSprite()
-    // applies a 180° in-place flip on kFlipPanel to compensate for that
-    // panel's physical 180° mounting; the non-flipped panel must be
-    // pushed first because the flip mutates the buffer in place.
+    // BMP asset is pre-rotated by tools/bmp_to_header.py to match the
+    // panel's native orientation, so pushSprite skips its 90° CW rotation
+    // step here. pushSprite() applies a 180° in-place flip on kFlipPanel
+    // to compensate for that panel's physical 180° mounting; the
+    // non-flipped panel must be pushed first because the flip mutates the
+    // buffer in place. The left eye is additionally mirrored horizontally
+    // so iris/highlight asymmetry mirrors across the face.
     eyeSprite.fillSprite(kBgColor);
     eyeSprite.pushImage(ox, oy, a.w, a.h, a.pixels);
+    static_assert(kLeftEyePanel == 1, "push order assumes left eye is panel 1");
     pushSprite(0, /*alreadyRotated=*/true);
+    if (uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer())) {
+        mirrorVerticalInPlace(buf, kDisplayW, kDisplayH);
+    }
     pushSprite(1, /*alreadyRotated=*/true);
 
     // Hold the frame until something else (an expression change) reclaims
@@ -220,6 +246,28 @@ int RobotEyes::showTestImage() {
     showingTestImage = true;
     testImageIdx     = (testImageIdx + 1) % 3;
     return idx + 1;  // 1-based for logging
+}
+
+void RobotEyes::showIdentify() {
+    // Right eye = green field + white "R"; left eye = red field + white "L".
+    // Drawn upright in sprite coords; pushSprite() handles the 90° CW
+    // pre-rotation, and the left-panel's 180° physical mount is cancelled
+    // by the rotate180InPlace step inside pushSprite() for kFlipPanel.
+    eyeSprite.setTextDatum(MC_DATUM);
+    eyeSprite.setTextFont(4);
+    eyeSprite.setTextSize(4);
+
+    eyeSprite.fillSprite(TFT_GREENYELLOW);
+    eyeSprite.setTextColor(TFT_WHITE, TFT_GREENYELLOW);
+    eyeSprite.drawString("R", kDisplayW / 2, kDisplayH / 2);
+    pushSprite(0);
+
+    eyeSprite.fillSprite(TFT_GOLD);
+    eyeSprite.setTextColor(TFT_WHITE, TFT_GOLD);
+    eyeSprite.drawString("L", kDisplayW / 2, kDisplayH / 2);
+    pushSprite(1);
+
+    showingTestImage = true;
 }
 
 void RobotEyes::applyExpressionModifiers() {

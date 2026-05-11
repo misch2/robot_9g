@@ -41,6 +41,7 @@ static void printHelp() {
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   9     Cycle eye1/eye2/eye3.bmp test image");
+    Serial.println("   0     Identify eyes (green R / orange L)");
     Serial.println("   ?     This help");
     Serial.println(" Servo pin mapping:");
     for (const ServoSpec& spec : kServos) {
@@ -147,6 +148,11 @@ static void handleKey(char c) {
             Serial.printf("Showing eye%d.bmp on both eyes\n", n);
             break;
         }
+
+        case '0':
+            robotEyes.showIdentify();
+            Serial.println("Eye identify: right=green R, left=orange L");
+            break;
 
         case '?':
             printHelp();
