@@ -31,10 +31,6 @@ void RobotFace::cycleExpression() {
     int next = (int)expression + 1;
     if (next >= (int)Expression::_Count) next = 0;
 
-    // FIXME tmp skip Neutral and Curious until I add some more expressions in that vein; they look weird with the current mouth set.
-    if (next == (int)Expression::Neutral) next = (int)Expression::Concentrating;
-    if (next == (int)Expression::Curious) next = (int)Expression::Concentrating;
-
     setExpression((Expression)next);
 }
 
@@ -66,29 +62,19 @@ void RobotFace::update() {
 }
 
 void RobotFace::drawNose() {
-    // Animal-style nose: rounded rectangle "shoulders" on top, tapering
-    // into a triangular apex below. A thin philtrum line drops from the
-    // apex toward the mouth.
-    constexpr int kCornerR = 12;
+    // Horizontal capsule (round-rect with corner radius == h/2) gives a
+    // smooth oval. Two small black circles inside for nostrils.
+    tft.fillSmoothRoundRect(kNoseCenterX - kNoseW / 2,
+                            kNoseCenterY - kNoseH / 2,
+                            kNoseW, kNoseH, kNoseH / 2,
+                            kNoseColor, kBgColor);
 
-    const int rectH   = (kNoseH * 6) / 10;
-    const int rectTop = kNoseCenterY - kNoseH / 2;
-    tft.fillSmoothRoundRect(kNoseCenterX - kNoseW / 2, rectTop,
-                            kNoseW, rectH, kCornerR, kNoseColor, kBgColor);
-
-    // Overlap the rect's bottom by kCornerR/2 so its rounded bottom
-    // corners are covered by the triangle.
-    const int triTop = rectTop + rectH - kCornerR / 2;
-    tft.fillTriangle(kNoseCenterX - kNoseW / 2, triTop,
-                     kNoseCenterX + kNoseW / 2, triTop,
-                     kNoseCenterX, kNoseCenterY + kNoseH / 2,
-                     kNoseColor);
-
-    // Philtrum — thin vertical line from the nose apex toward (but not
-    // into) the mouth bounding box, which gets cleared on every redraw.
-    tft.drawWideLine(kNoseCenterX, kNoseCenterY + kNoseH / 2,
-                     kNoseCenterX, kMouthCenterY - kMouthBoxH / 2 - 2,
-                     3, kNoseColor, kBgColor);
+    constexpr int kNostrilR      = 4;
+    constexpr int kNostrilOffset = 14;  // horizontal distance from nose center
+    tft.fillSmoothCircle(kNoseCenterX - kNostrilOffset, kNoseCenterY,
+                         kNostrilR, kBgColor, kNoseColor);
+    tft.fillSmoothCircle(kNoseCenterX + kNostrilOffset, kNoseCenterY,
+                         kNostrilR, kBgColor, kNoseColor);
 }
 
 void RobotFace::drawMouth() {

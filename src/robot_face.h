@@ -42,9 +42,9 @@ private:
     // Geometry. The TFT is 240x240; nose sits in the upper-middle area
     // and the mouth in the lower area, both centered horizontally.
     static constexpr int kNoseCenterX = 120;
-    static constexpr int kNoseCenterY = 95;
-    static constexpr int kNoseW       = 64;
-    static constexpr int kNoseH       = 48;
+    static constexpr int kNoseCenterY = 90;
+    static constexpr int kNoseW       = 70;
+    static constexpr int kNoseH       = 36;
 
     static constexpr int kMouthCenterX = 120;
     static constexpr int kMouthCenterY = 185;
@@ -53,7 +53,7 @@ private:
 
     TFT_eSPI tft;
 
-    Expression expression = Expression::Happy;
+    Expression expression = Expression::Neutral;
     bool expressionDirty  = true;  // forces full redraw on first frame
 
     void drawNose();
