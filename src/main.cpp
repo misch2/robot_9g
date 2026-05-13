@@ -191,10 +191,14 @@ void setup() {
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
 
     robotFace.begin();
+    robotFace.showBootMessage("Init eyes...");
     robotEyes.begin();
+    robotFace.showBootMessage("Init servos...");
     servoManager.begin();
     robotMotion.begin();
+    robotFace.showBootMessage("Init WiFi...");
     webControl.begin();
+    robotFace.showBootMessage("Ready");
 
     // FIXME debugging
     // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging

@@ -53,7 +53,9 @@ constexpr ServoSpec kServos[] = {
     {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, rearRightMinAngle,  rearRightMinAngle + legAngleRange,  rearRightMinAngle,                 +1}, // rest = standing (extended); primary = foot up (toward 180)
     {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 25.0f,              100.0f,                             100.0f,                            -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
     {ServoId::Translation, "Translation", PIN_SERVO_6, 0.0f,               175.0f,                             67.0f,                             +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
-    {ServoId::HeadPan,     "HeadPan",     PIN_SERVO_7, 45.0f,              135.0f,                             90.0f,                             +1}, // rest = look forward, primary = turn head left
+
+    // can't allow more, it would collide with electronics (step down converter)
+    {ServoId::HeadPan,     "HeadPan",     PIN_SERVO_7, 40.0f,              130.0f,                             90.0f,                             +1}, // rest = look forward, primary = turn head left
     {ServoId::HeadTilt,    "HeadTilt",    PIN_SERVO_8, 45.0f,              145.0f,                             85.0f,                             +1}, // rest = look forward, primary = tilt head up
 };
 

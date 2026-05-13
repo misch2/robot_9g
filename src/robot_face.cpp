@@ -3,7 +3,7 @@
 namespace {
 constexpr uint16_t kBgColor    = TFT_BLACK;
 constexpr uint16_t kMouthColor = TFT_CYAN;
-constexpr uint16_t kNoseColor  = TFT_PINK;
+constexpr uint16_t kNoseColor  = TFT_LIGHTGREY;
 
 // Mouth arc stroke thickness.
 constexpr int kArcThickness = 8;
@@ -15,10 +15,19 @@ void RobotFace::begin() {
     tft.init();
     tft.setRotation(TFT_ROTATION);
     tft.fillScreen(kBgColor);
-    // Nose never changes with expression, so draw once. drawMouth() only
-    // clears the mouth bounding box, which sits below the nose region.
-    drawNose();
-    // expressionDirty starts true so the first update() draws the mouth.
+    // No face drawn here — main.cpp paints boot status during the slow
+    // inits, and the first update() after boot redraws nose + mouth
+    // (expressionDirty starts true).
+}
+
+void RobotFace::showBootMessage(const char* msg) {
+    tft.fillScreen(kBgColor);
+    tft.setTextColor(TFT_WHITE, kBgColor);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextFont(4);
+    tft.drawString(msg, 120, 120);
+    // The next update() must repaint the face on top of this text.
+    expressionDirty = true;
 }
 
 void RobotFace::setExpression(Expression e) {
@@ -57,24 +66,32 @@ const char* RobotFace::expressionName(Expression e) {
 
 void RobotFace::update() {
     if (!expressionDirty) return;
+    // Full clear + redraw — wipes any boot status text and lets drawMouth()
+    // skip its own bounding-box clear concern.
+    tft.fillScreen(kBgColor);
+    drawNose();
     drawMouth();
     expressionDirty = false;
 }
 
 void RobotFace::drawNose() {
-    // Horizontal capsule (round-rect with corner radius == h/2) gives a
-    // smooth oval. Two small black circles inside for nostrils.
-    tft.fillSmoothRoundRect(kNoseCenterX - kNoseW / 2,
-                            kNoseCenterY - kNoseH / 2,
-                            kNoseW, kNoseH, kNoseH / 2,
-                            kNoseColor, kBgColor);
+    // Inverted-triangle cat/dog nose. Built from two filled primitives:
+    // a sharp-tipped triangle for the body, and a thin horizontal capsule
+    // layered on its top edge whose rounded ends become the soft shoulders.
+    const int cx    = kNoseCenterX;
+    const int halfW = kNoseW / 2;
+    const int topY  = kNoseCenterY - kNoseH / 2;
+    const int tipY  = kNoseCenterY + kNoseH / 2;
 
-    constexpr int kNostrilR      = 4;
-    constexpr int kNostrilOffset = 14;  // horizontal distance from nose center
-    tft.fillSmoothCircle(kNoseCenterX - kNostrilOffset, kNoseCenterY,
-                         kNostrilR, kBgColor, kNoseColor);
-    tft.fillSmoothCircle(kNoseCenterX + kNostrilOffset, kNoseCenterY,
-                         kNostrilR, kBgColor, kNoseColor);
+    tft.fillTriangle(cx - halfW, topY,
+                     cx + halfW, topY,
+                     cx, tipY,
+                     kNoseColor);
+
+    constexpr int kShoulderCapH = 14;
+    tft.fillSmoothRoundRect(cx - halfW, topY - kShoulderCapH / 2,
+                            kNoseW, kShoulderCapH, kShoulderCapH / 2,
+                            kNoseColor, kBgColor);
 }
 
 void RobotFace::drawMouth() {

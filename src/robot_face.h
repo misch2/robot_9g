@@ -38,13 +38,17 @@ public:
     void cycleExpression();
     static const char* expressionName(Expression e);
 
+    // Show a centered status string for the boot sequence. Replaces whatever
+    // is on the panel; the next update() after boot redraws the full face.
+    void showBootMessage(const char* msg);
+
 private:
     // Geometry. The TFT is 240x240; nose sits in the upper-middle area
     // and the mouth in the lower area, both centered horizontally.
     static constexpr int kNoseCenterX = 120;
     static constexpr int kNoseCenterY = 90;
-    static constexpr int kNoseW       = 70;
-    static constexpr int kNoseH       = 36;
+    static constexpr int kNoseW       = 50;
+    static constexpr int kNoseH       = 30;
 
     static constexpr int kMouthCenterX = 120;
     static constexpr int kMouthCenterY = 185;
