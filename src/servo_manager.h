@@ -7,11 +7,15 @@
 
 // Owns the registered Servo instances and translates between fraction-based
 // commands and concrete angles using kServos[] as the calibration source.
-// ServoId doubles as the array index and LEDC channel number, so the project
-// is bounded to 8 servos on ESP32-S3 (LEDC channel limit).
+// ServoId doubles as the array index and the backend channel number (LEDC
+// channel for SERVO_BACKEND_LEDC, PCA9685 channel for SERVO_BACKEND_PCA9685),
+// so the project is bounded to `kMaxServos` from servo.h — 8 on the LEDC
+// backend (ESP32-S3 channel limit), 16 on the PCA9685 backend.
 class ServoManager {
 public:
     static constexpr size_t kCount = static_cast<size_t>(ServoId::_Count);
+    static_assert(kCount <= kMaxServos,
+                  "ServoId::_Count exceeds the active backend's channel limit (kMaxServos)");
 
     ServoManager();
     ~ServoManager();

@@ -74,8 +74,8 @@ inline void mirrorVerticalInPlace(uint16_t* buf, int w, int h) {
         uint16_t* b = buf + (size_t)y2 * w;
         for (int x = 0; x < w; ++x) {
             uint16_t t = a[x];
-            a[x]      = b[x];
-            b[x]      = t;
+            a[x]       = b[x];
+            b[x]       = t;
         }
     }
 }
@@ -97,11 +97,11 @@ inline void rotate90CWInPlace(uint16_t* buf, int n) {
             // 4-cycle around the ring, CW: top←left, left←bottom,
             // bottom←right, right←(saved top). Pixel at (x, 0) ends up
             // at (n-1, x), which is the 90° CW transform (x,y)→(n-1-y,x).
-            uint16_t   tmp                       = buf[first * n + i];
-            buf[first * n + i]                   = buf[(last - offset) * n + first];
-            buf[(last - offset) * n + first]     = buf[last * n + (last - offset)];
-            buf[last * n + (last - offset)]      = buf[i * n + last];
-            buf[i * n + last]                    = tmp;
+            uint16_t tmp                     = buf[first * n + i];
+            buf[first * n + i]               = buf[(last - offset) * n + first];
+            buf[(last - offset) * n + first] = buf[last * n + (last - offset)];
+            buf[last * n + (last - offset)]  = buf[i * n + last];
+            buf[i * n + last]                = tmp;
         }
     }
 }
@@ -219,10 +219,10 @@ int RobotEyes::showTestImage() {
     };
     static_assert(sizeof(kAssets) / sizeof(kAssets[0]) == 3, "test-image cycle expects 3 assets");
 
-    const int idx = testImageIdx;
+    const int idx     = testImageIdx;
     const EyeAsset& a = kAssets[idx];
-    const int ox = (kDisplayW - a.w) / 2;
-    const int oy = (kDisplayH - a.h) / 2;
+    const int ox      = (kDisplayW - a.w) / 2;
+    const int oy      = (kDisplayH - a.h) / 2;
 
     // BMP asset is pre-rotated by tools/bmp_to_header.py to match the
     // panel's native orientation, so pushSprite skips its 90° CW rotation
@@ -254,16 +254,16 @@ void RobotEyes::showIdentify() {
     // pre-rotation, and the left-panel's 180° physical mount is cancelled
     // by the rotate180InPlace step inside pushSprite() for kFlipPanel.
     eyeSprite.setTextDatum(MC_DATUM);
-    eyeSprite.setTextFont(4);
-    eyeSprite.setTextSize(4);
+    eyeSprite.setTextFont(3);
+    eyeSprite.setTextSize(3);
 
     eyeSprite.fillSprite(TFT_GREENYELLOW);
-    eyeSprite.setTextColor(TFT_WHITE, TFT_GREENYELLOW);
+    eyeSprite.setTextColor(TFT_DARKGREY, TFT_GREENYELLOW);
     eyeSprite.drawString("R", kDisplayW / 2, kDisplayH / 2);
     pushSprite(0);
 
-    eyeSprite.fillSprite(TFT_GOLD);
-    eyeSprite.setTextColor(TFT_WHITE, TFT_GOLD);
+    eyeSprite.fillSprite(TFT_ORANGE);
+    eyeSprite.setTextColor(TFT_DARKGREY, TFT_ORANGE);
     eyeSprite.drawString("L", kDisplayW / 2, kDisplayH / 2);
     pushSprite(1);
 

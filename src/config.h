@@ -37,10 +37,12 @@ struct ServoSpec {
 
 constexpr float legAngleRange = 90.0f;  // how far each leg servo can lift from its rest position toward the primary limit, in degrees. Tune to your geometry and HW limits.
 
-constexpr float frontLeftMinAngle  = 10.0f;  // higher value = raise foot less
-constexpr float rearLeftMinAngle   = frontLeftMinAngle;
-constexpr float frontRightMinAngle = 92.0f;  // higher value = raise foot more
-constexpr float rearRightMinAngle  = frontRightMinAngle;
+// Left side: fully raised foot = lowest angle
+constexpr float frontLeftMinAngle = 7.0f;
+constexpr float rearLeftMinAngle  = 0.0f;
+// Right side: fully raised foot = highest angle
+constexpr float frontRightMinAngle = 180.0f;
+constexpr float rearRightMinAngle  = 180.0f;
 
 // Hardware-specific servo configuration. Tune these to your geometry and HW limits.
 constexpr ServoSpec kServos[] = {
@@ -49,10 +51,10 @@ constexpr ServoSpec kServos[] = {
     {ServoId::FrontRight,  "FrontRight",  PIN_SERVO_2, frontRightMinAngle, frontRightMinAngle + legAngleRange, frontRightMinAngle,                +1}, // rest = standing (extended); primary = foot up (toward 180)
     {ServoId::RearLeft,    "RearLeft",    PIN_SERVO_3, rearLeftMinAngle,   rearLeftMinAngle + legAngleRange,   rearLeftMinAngle + legAngleRange,  -1}, // rest = standing (extended); primary = foot up (toward 0)
     {ServoId::RearRight,   "RearRight",   PIN_SERVO_4, rearRightMinAngle,  rearRightMinAngle + legAngleRange,  rearRightMinAngle,                 +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 10.0f,              100.0f,                             100.0f,                            -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
-    {ServoId::Translation, "Translation", PIN_SERVO_6, 10.0f,              150.0f,                             80.0f,                             +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
-    {ServoId::HeadPan,     "HeadPan",     PIN_SERVO_7, 45.0f,              135.0f,                             90.0f,                             +1}, // primary = turn head left and right
-    {ServoId::HeadTilt,    "HeadTilt",    PIN_SERVO_8, 45.0f,              135.0f,                             90.0f,                             +1}, // primary = tilt head up and down
+    {ServoId::Rotation,    "Rotation",    PIN_SERVO_5, 25.0f,              100.0f,                             100.0f,                            -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
+    {ServoId::Translation, "Translation", PIN_SERVO_6, 0.0f,               175.0f,                             67.0f,                             +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
+    {ServoId::HeadPan,     "HeadPan",     PIN_SERVO_7, 45.0f,              135.0f,                             90.0f,                             +1}, // rest = look forward, primary = turn head left
+    {ServoId::HeadTilt,    "HeadTilt",    PIN_SERVO_8, 45.0f,              145.0f,                             85.0f,                             +1}, // rest = look forward, primary = tilt head up
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),

@@ -12,6 +12,7 @@ ServoManager::~ServoManager() {
 }
 
 void ServoManager::begin() {
+    servoBackendBegin();
     for (size_t i = 0; i < kCount; i++) {
         const ServoSpec& spec = kServos[i];
         servos.emplace_back((uint8_t)i, spec.pin, SERVO_MIN_PULSE, SERVO_MAX_PULSE,

@@ -1,5 +1,7 @@
 #include "servo.h"
 
+#if defined(SERVO_BACKEND_LEDC)
+
 namespace {
 constexpr uint32_t kServoFreqHz       = 50;
 constexpr uint8_t kServoResolutionBit = 14;                         // 16-bit @ 50Hz fails ledcSetup on arduino-esp32 v2.x
@@ -12,9 +14,14 @@ uint32_t pulseToDuty(int microseconds) {
 }
 }  // namespace
 
-Servo::Servo(uint8_t ledcChannel, int pinNumber, int minPulseLength, int maxPulseLength,
+void servoBackendBegin() {
+    // LEDC needs no global setup — each Servo::attach() drives ledcSetup +
+    // ledcAttachPin on its own channel.
+}
+
+Servo::Servo(uint8_t channel, int pinNumber, int minPulseLength, int maxPulseLength,
              int minAngle, int maxAngle, int neutralAngle)
-    : ledcChannel(ledcChannel),
+    : channel(channel),
       pinNumber(pinNumber),
       minPulseLength(minPulseLength),
       maxPulseLength(maxPulseLength),
@@ -28,11 +35,11 @@ Servo::Servo(uint8_t ledcChannel, int pinNumber, int minPulseLength, int maxPuls
 void Servo::attach() {
     if (attached) return;
     pinMode(pinNumber, OUTPUT);
-    double actualHz = ledcSetup(ledcChannel, kServoFreqHz, kServoResolutionBit);
-    ledcAttachPin(pinNumber, ledcChannel);
+    double actualHz = ledcSetup(channel, kServoFreqHz, kServoResolutionBit);
+    ledcAttachPin(pinNumber, channel);
     attached = (actualHz > 0.0);
-    Serial.printf("Servo: attach pin=%d ch=%u req=%uHz/%ubit actual=%.2fHz %s\n",
-                  pinNumber, (unsigned)ledcChannel,
+    Serial.printf("Servo[LEDC]: attach pin=%d ch=%u req=%uHz/%ubit actual=%.2fHz %s\n",
+                  pinNumber, (unsigned)channel,
                   (unsigned)kServoFreqHz, (unsigned)kServoResolutionBit,
                   actualHz,
                   (actualHz > 0.0) ? "OK" : "FAILED");
@@ -58,7 +65,7 @@ int Servo::angleToMicroseconds(float angle) const {
 }
 
 void Servo::writeMicroseconds(int microseconds) {
-    ledcWrite(ledcChannel, pulseToDuty(microseconds));
+    ledcWrite(channel, pulseToDuty(microseconds));
 }
 
 void Servo::setAngle(float angle) {
@@ -68,9 +75,11 @@ void Servo::setAngle(float angle) {
     int us        = angleToMicroseconds(clamped);
     if (us != lastPulseUs) {
         uint32_t duty = pulseToDuty(us);
-        // Serial.printf("Servo: setAngle pin=%d ch=%u angle=%.1f -> %dus (duty=%u)\n",
-        //               pinNumber, (unsigned)ledcChannel, clamped, us, (unsigned)duty);
+        // Serial.printf("Servo[LEDC]: setAngle pin=%d ch=%u angle=%.1f -> %dus (duty=%u)\n",
+        //               pinNumber, (unsigned)channel, clamped, us, (unsigned)duty);
         lastPulseUs = us;
     }
     writeMicroseconds(us);
 }
+
+#endif  // SERVO_BACKEND_LEDC
