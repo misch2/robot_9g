@@ -95,6 +95,11 @@ const char kServiceHtml[] PROGMEM = R"HTML(<!doctype html>
   .legend .vel::before { background: var(--accent2); }
   #status { font-size: .85rem; color: var(--muted); min-height: 1.2em; }
   #status.error { color: #f55; }
+  .power { display: flex; gap: 1.5rem; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .power .item { display: flex; flex-direction: column; gap: .15rem; }
+  .power .val { font-size: 1.4rem; font-weight: 500; }
+  .power .unit { color: var(--muted); font-size: .75rem; text-transform: uppercase;
+                 letter-spacing: .08em; }
 </style>
 </head>
 <body>
@@ -102,6 +107,15 @@ const char kServiceHtml[] PROGMEM = R"HTML(<!doctype html>
     <h1>Service Menu</h1>
     <a href="/">&larr; Home</a>
   </header>
+
+  <section>
+    <h2>Power</h2>
+    <div class="power" id="power">
+      <div class="item"><span class="val" id="pV">–</span><span class="unit">V</span></div>
+      <div class="item"><span class="val" id="pA">–</span><span class="unit">mA</span></div>
+      <div class="item"><span class="val" id="pW">–</span><span class="unit">mW</span></div>
+    </div>
+  </section>
 
   <section>
     <h2>Servos</h2>
@@ -186,6 +200,17 @@ function renderServos() {
   }
 }
 
+function renderPower() {
+  const p = state.power;
+  if (!p || p.ready === false) {
+    $('pV').textContent = $('pA').textContent = $('pW').textContent = '–';
+    return;
+  }
+  $('pV').textContent = p.v.toFixed(2);
+  $('pA').textContent = p.ma.toFixed(0);
+  $('pW').textContent = p.mw.toFixed(0);
+}
+
 function selectedIds() { return [...selected]; }
 
 function send(msg) {
@@ -230,7 +255,7 @@ function connect() {
   ws.onmessage = ev => {
     try {
       const m = JSON.parse(ev.data);
-      if (m.type === 'state') { state = m; renderServos(); }
+      if (m.type === 'state') { state = m; renderServos(); renderPower(); }
     } catch (e) { console.error(e); }
   };
 }
@@ -285,8 +310,8 @@ Easing parseEasing(const char* s) {
 
 }  // namespace
 
-WebControl::WebControl(ServoManager& manager, ServoMotion& motion)
-    : manager(manager), motion(motion), server(80), ws("/ws") {}
+WebControl::WebControl(ServoManager& manager, ServoMotion& motion, const CurrentSensor& current)
+    : manager(manager), motion(motion), current(current), server(80), ws("/ws") {}
 
 void WebControl::begin() {
     WiFi.mode(WIFI_AP);
@@ -344,6 +369,13 @@ void WebControl::begin() {
 void WebControl::update() {
     dnsServer.processNextRequest();
     ws.cleanupClients();
+    uint32_t now = millis();
+    if (now - lastBroadcastMs >= 1000) {
+        lastBroadcastMs = now;
+        if (ws.count() > 0) {
+            ws.textAll(buildStateJson());
+        }
+    }
 }
 
 void WebControl::handleWsMessage(AsyncWebSocketClient* client, const uint8_t* data, size_t len) {
@@ -409,6 +441,14 @@ String WebControl::buildStateJson() const {
         o["min"]   = spec.minAngle;
         o["max"]   = spec.maxAngle;
         o["rest"]  = spec.restAngle;
+    }
+    JsonObject p = doc["power"].to<JsonObject>();
+    if (current.isReady()) {
+        p["v"]  = current.getBusVoltageV();
+        p["ma"] = current.getCurrentMa();
+        p["mw"] = current.getPowerMw();
+    } else {
+        p["ready"] = false;
     }
     String out;
     serializeJson(doc, out);

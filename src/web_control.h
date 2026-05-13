@@ -4,6 +4,7 @@
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
 
+#include "current_sensor.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
 
@@ -12,13 +13,14 @@
 // directly (bypassing RobotMotion). The future main control UI will live at /.
 class WebControl {
 public:
-    WebControl(ServoManager& manager, ServoMotion& motion);
+    WebControl(ServoManager& manager, ServoMotion& motion, const CurrentSensor& current);
 
     // Brings up the AP with credentials from wifi_config.h, mounts the HTTP
     // routes, and starts the server. Call once from setup() after Serial.
     void begin();
 
-    // Cleans up dropped WebSocket clients. Call from loop().
+    // Cleans up dropped WebSocket clients and periodically broadcasts state
+    // (including live power readings) to all connected clients. Call from loop().
     void update();
 
 private:
@@ -28,7 +30,9 @@ private:
 
     ServoManager& manager;
     ServoMotion& motion;
+    const CurrentSensor& current;
     AsyncWebServer server;
     AsyncWebSocket ws;
     DNSServer dnsServer;
+    uint32_t lastBroadcastMs = 0;
 };

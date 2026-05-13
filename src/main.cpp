@@ -16,12 +16,12 @@ ServoMotion servoMotion(servoManager);
 RobotMotion robotMotion(servoMotion);
 RobotFace robotFace;
 RobotEyes robotEyes;
-WebControl webControl(servoManager, servoMotion);
 #if defined(INA219_ADDR)
 CurrentSensor currentSensor(INA219_ADDR);
 #else
 CurrentSensor currentSensor;  // stub — INA219 not configured in this env
 #endif
+WebControl webControl(servoManager, servoMotion, currentSensor);
 
 static constexpr uint32_t kCurrentPrintIntervalMs = 1000;
 
