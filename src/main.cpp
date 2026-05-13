@@ -1,5 +1,9 @@
 #include <Arduino.h>
+#if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
+#include <Wire.h>
+#endif
 #include "config.h"
+#include "current_sensor.h"
 #include "robot_eyes.h"
 #include "robot_face.h"
 #include "robot_motion.h"
@@ -13,10 +17,37 @@ RobotMotion robotMotion(servoMotion);
 RobotFace robotFace;
 RobotEyes robotEyes;
 WebControl webControl(servoManager, servoMotion);
+#if defined(INA219_ADDR)
+CurrentSensor currentSensor(INA219_ADDR);
+#else
+CurrentSensor currentSensor;  // stub — INA219 not configured in this env
+#endif
+
+static constexpr uint32_t kCurrentPrintIntervalMs = 1000;
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
 // Use this duration for all of them so the visual feedback is consistent.
 static constexpr uint32_t kDirectMoveMs = 250;
+
+#if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
+static void scanI2cBus() {
+    // Bring up Wire ourselves so the scan works regardless of whether the
+    // servo backend has already started the bus. Wire.begin() is idempotent
+    // on arduino-esp32.
+    Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    Serial.printf("[I2C] scanning 0x03..0x77 on SDA=%d SCL=%d...\n",
+                  (int)PIN_I2C_SDA, (int)PIN_I2C_SCL);
+    uint8_t found = 0;
+    for (uint8_t addr = 0x03; addr <= 0x77; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.printf("[I2C]   device at 0x%02X\n", addr);
+            found++;
+        }
+    }
+    Serial.printf("[I2C] scan done, %u device(s) found\n", (unsigned)found);
+}
+#endif
 
 static void printHelp() {
     Serial.println();
@@ -190,15 +221,33 @@ void setup() {
     Serial.println("Starting...");
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
 
+#if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
+    scanI2cBus();
+#endif
+
     robotFace.begin();
+
     robotFace.showBootMessage("Init eyes...");
     robotEyes.begin();
+
     robotFace.showBootMessage("Init servos...");
     servoManager.begin();
     robotMotion.begin();
+
+#if defined(INA219_ADDR) && defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
+    robotFace.showBootMessage("Init INA219...");
+    if (!currentSensor.begin(PIN_I2C_SDA, PIN_I2C_SCL)) {
+        robotFace.showBootMessage("INA219 missing!");
+        Serial.println("INA219 missing — halting setup");
+        while (true) delay(1000);
+    }
+#endif
     robotFace.showBootMessage("Init WiFi...");
     webControl.begin();
-    robotFace.showBootMessage("Ready");
+    // Draw the face right here instead of relying on the first loop() tick
+    // to clear the last boot message — keeps the panel in a deterministic
+    // state before WiFi tasks start competing for SPI/CPU time.
+    robotFace.update();
 
     // FIXME debugging
     // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
@@ -218,11 +267,25 @@ void setup() {
     printHelp();
 }
 
+static void printCurrentConsumption() {
+    if (!currentSensor.isReady()) return;
+    static uint32_t lastMs = 0;
+    uint32_t now           = millis();
+    if (now - lastMs < kCurrentPrintIntervalMs) return;
+    lastMs = now;
+    currentSensor.read();
+    Serial.printf("[INA219] %.2f V  %.1f mA  %.0f mW\n",
+                  currentSensor.getBusVoltageV(),
+                  currentSensor.getCurrentMa(),
+                  currentSensor.getPowerMw());
+}
+
 void loop() {
     processSerialInput();
     servoMotion.update();
     robotMotion.update();
     webControl.update();
+    printCurrentConsumption();
 
     // Show a Concentrating face while the robot is moving; restore the
     // prior expression once idle. Edge-detected so we don't fight 'm'.

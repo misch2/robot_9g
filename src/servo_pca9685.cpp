@@ -17,8 +17,9 @@
 
 namespace {
 constexpr uint32_t kServoFreqHz = 50;
-constexpr uint32_t kI2cClockHz  = 400000;
-constexpr uint16_t kPwmOff      = 4096;  // "fully off" sentinel in the PCA9685 OFF count
+// 400 kHz with external 4.7 kΩ pull-ups on SDA/SCL.
+constexpr uint32_t kI2cClockHz = 400000;
+constexpr uint16_t kPwmOff     = 4096;  // "fully off" sentinel in the PCA9685 OFF count
 
 // Shared driver. Held as a pointer rather than a static object so the I2C
 // transactions in its ctor are deferred until servoBackendBegin() runs after
@@ -31,6 +32,15 @@ void servoBackendBegin() {
     if (g_started) return;
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
     Wire.setClock(kI2cClockHz);
+    // Probe the chip before letting Adafruit_PWMServoDriver::begin() blindly
+    // poke registers — that call returns void, so without this we'd silently
+    // run with a non-existent servo bus.
+    Wire.beginTransmission(PCA9685_ADDR);
+    if (Wire.endTransmission() != 0) {
+        Serial.printf("Servo[PCA9685]: NOT FOUND at 0x%02X (SDA=%d SCL=%d) — halting\n",
+                      (unsigned)PCA9685_ADDR, (int)PIN_I2C_SDA, (int)PIN_I2C_SCL);
+        while (true) delay(1000);
+    }
     g_driver = new Adafruit_PWMServoDriver(PCA9685_ADDR, Wire);
     g_driver->begin();
     g_driver->setOscillatorFrequency(27000000);  // Adafruit-recommended default; calibrate if measured pulses are off
