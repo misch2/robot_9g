@@ -72,6 +72,11 @@ public:
     // the next setExpression() call.
     void showIdentify();
 
+    // Paint both eyes with a "confused spiral" pattern. Companion to
+    // RobotFace::showFatalError — the caller invokes both, then stops
+    // ticking update() so the frame persists.
+    void showFatalError();
+
 private:
     // Each display is 160x160; the eye is centered with headroom above
     // for an eyebrow.

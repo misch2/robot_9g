@@ -222,6 +222,7 @@ void setup() {
     robotFace.showBootMessage("Init servos...");
     if (!servoManager.begin()) {
         robotFace.showFatalError("PCA9685 servo board not found on I2C");
+        robotEyes.showFatalError();
         Serial.println("PCA9685 missing — halting setup");
         while (true) delay(1000);
     }
@@ -231,6 +232,7 @@ void setup() {
     robotFace.showBootMessage("Init INA219...");
     if (!currentSensor.begin(PIN_I2C_SDA, PIN_I2C_SCL)) {
         robotFace.showFatalError("INA219 current sensor not found on I2C");
+        robotEyes.showFatalError();
         Serial.println("INA219 missing — halting setup");
         while (true) delay(1000);
     }

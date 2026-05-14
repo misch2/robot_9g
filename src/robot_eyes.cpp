@@ -270,6 +270,45 @@ void RobotEyes::showIdentify() {
     showingTestImage = true;
 }
 
+void RobotEyes::showFatalError() {
+    if (!eyeSprite.getPointer()) return;
+
+    // Archimedean spiral overlay on a cyan disc — the cartoon "dizzy /
+    // confused eyes" trope. Drawn in upright sprite coordinates; pushSprite()
+    // handles the per-panel rotation + flip. We redraw between pushes
+    // because pushSprite() mutates the buffer in place.
+    auto draw = [this]() {
+        constexpr int cx        = kDisplayW / 2;
+        constexpr int cy        = kDisplayH / 2;
+        constexpr float kStep   = 0.18f;
+        constexpr float kA      = 1.8f;
+        constexpr float kMaxR   = 70.0f;
+        constexpr float kThick  = 4.0f;
+        eyeSprite.fillSprite(kBgColor);
+        eyeSprite.fillSmoothCircle(cx, cy, (int)kMaxR + 4, kEyeColor, kBgColor);
+        float prevX = cx;
+        float prevY = cy;
+        for (int i = 1; i < 400; ++i) {
+            float t = i * kStep;
+            float r = kA * t;
+            if (r > kMaxR) break;
+            float x = cx + cosf(t) * r;
+            float y = cy + sinf(t) * r;
+            eyeSprite.drawWideLine((int)prevX, (int)prevY, (int)x, (int)y,
+                                   kThick, kPupilColor, kEyeColor);
+            prevX = x;
+            prevY = y;
+        }
+    };
+
+    draw();
+    pushSprite(0);
+    draw();
+    pushSprite(1);
+
+    showingTestImage = true;
+}
+
 void RobotEyes::applyExpressionModifiers() {
     // Defaults — neutral round eye.
     eyeRadiusScale = 1.0f;
