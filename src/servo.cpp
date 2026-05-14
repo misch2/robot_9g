@@ -1,15 +1,13 @@
 #include "servo.h"
 
-#if defined(SERVO_BACKEND_PCA9685)
-
 #include <Adafruit_PWMServoDriver.h>
 #include <Wire.h>
 
 #ifndef PIN_I2C_SDA
-#error "PIN_I2C_SDA must be defined (-D in platformio.ini) for the PCA9685 backend"
+#error "PIN_I2C_SDA must be defined (-D in platformio.ini)"
 #endif
 #ifndef PIN_I2C_SCL
-#error "PIN_I2C_SCL must be defined (-D in platformio.ini) for the PCA9685 backend"
+#error "PIN_I2C_SCL must be defined (-D in platformio.ini)"
 #endif
 #ifndef PCA9685_ADDR
 #define PCA9685_ADDR 0x40
@@ -51,10 +49,9 @@ void servoBackendBegin() {
                   (unsigned)kServoFreqHz);
 }
 
-Servo::Servo(uint8_t channel, int pinNumber, int minPulseLength, int maxPulseLength,
+Servo::Servo(uint8_t channel, int minPulseLength, int maxPulseLength,
              int minAngle, int maxAngle, int neutralAngle)
     : channel(channel),
-      pinNumber(pinNumber),
       minPulseLength(minPulseLength),
       maxPulseLength(maxPulseLength),
       minAngle(minAngle),
@@ -72,8 +69,7 @@ void Servo::attach() {
         return;
     }
     attached = true;
-    Serial.printf("Servo[PCA9685]: attach ch=%u (pinNumber=%d ignored)\n",
-                  (unsigned)channel, pinNumber);
+    Serial.printf("Servo[PCA9685]: attach ch=%u\n", (unsigned)channel);
 }
 
 void Servo::detach() {
@@ -106,5 +102,3 @@ void Servo::setAngle(float angle) {
     if (us != lastPulseUs) lastPulseUs = us;
     writeMicroseconds(us);
 }
-
-#endif  // SERVO_BACKEND_PCA9685

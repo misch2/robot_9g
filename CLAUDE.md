@@ -17,8 +17,7 @@ PlatformIO CLI is the canonical build interface (the VS Code extension wraps the
 - Clean: `pio run -t clean`
 
 Environments:
-- `esp32s3` (default) — production firmware, servos driven directly via ESP32 LEDC channels (`SERVO_BACKEND_LEDC`, capped at 8 servos by the channel count).
-- `esp32s3_pca9685` — same firmware, servos driven via a PCA9685 I²C servo board (`SERVO_BACKEND_PCA9685`, up to 16 servos). I²C pins and chip address are set as `-D` macros in this env's `build_flags`. Per-servo `PIN_SERVO_*` defines are still passed in but ignored at runtime.
+- `esp32s3` (default) — production firmware. Servos driven via a PCA9685 I²C servo board (up to 16 channels). I²C pins and chip address are set as `-D` macros in `build_flags`.
 - `esp32s3_eyes_debug` — standalone dual-eye wiring test sketch (see Display layer below).
 
 No test runner is configured.
@@ -32,15 +31,15 @@ Pin constraints documented in `platformio.ini` and that must be respected when a
 - Strapping pins, use with care: GPIO 0, 3, 45, 46.
 - ADC2 pins (GPIO 11–20) cannot be used for ADC while Wi‑Fi is active.
 
-Current assignments: TFT on GPIO 8–12 (no MISO, no backlight pin); servos on GPIO 6, 7, 15, 16, 17, 18.
+Current assignments: TFT on GPIO 8–12 (no MISO, no backlight pin); PCA9685 servo board on I²C (SDA=4, SCL=5).
 
 ## Code architecture
 
 The codebase is intentionally small. The layers, lowest first:
 
 - `src/main.cpp` — Arduino `setup()`/`loop()`. Constructs a single `ServoManager`, a `ServoMotion` bound to it, and a `RobotMotion` bound to that; registers servos and calls both `begin()`s. `loop()` reads serial input (debug keys: direct per-servo control plus queued whole-robot moves — press `?` for the full list) and ticks `servoMotion.update()` then `robotMotion.update()`.
-- `src/servo.h` + `src/servo_ledc.cpp` / `src/servo_pca9685.cpp` — single-servo driver. The header declares the public `Servo` API plus `kMaxServos` (8 for LEDC, 16 for PCA9685) and `servoBackendBegin()`; exactly one backend `.cpp` compiles per env, selected by `SERVO_BACKEND_LEDC` / `SERVO_BACKEND_PCA9685` (each guards its body with `#if`, and `platformio.ini` excludes the inactive file via `build_src_filter` to avoid pulling its transitive deps). The shared PCA9685 driver lives as a file-scope pointer in `servo_pca9685.cpp`, initialized by `servoBackendBegin()` and used by every `Servo`. LEDC backend: 50 Hz, 14-bit resolution (~1.2 µs); 16-bit at 50 Hz makes `ledcSetup` fail silently on arduino-esp32 v2.x because the timer divider doesn't fit. PCA9685 backend: 50 Hz, 12-bit resolution (~4.88 µs — below the ~1–3° backlash of a 9g servo, so the chip is no longer the precision-limiting factor). Both expose the same `attach()`/`detach()`/`setAngle(float)` (clamped to `minAngle`/`maxAngle`, clamped float kept for `getCurrentAngle()`). Not RAII — `attach`/`detach` are explicit so instances live in a `std::vector` inside `ServoManager`. We use LEDC directly rather than the `ESP32Servo` library: `ESP32Servo` 3.x hung unreproducibly inside our setup path on this hardware/framework combo (the library worked in a minimal isolated sketch, so the cause was never pinned down — direct LEDC sidesteps the dependency entirely).
-- `src/servo_manager.{h,cpp}` — owns the group of registered `Servo`s and dispatches by `ServoId`. The `ServoId` enum value is used as both the array index *and* the backend channel number (LEDC channel or PCA9685 channel), so servos must be registered once per `ServoId` in declaration order. A `static_assert` bounds `ServoId::_Count` to the active backend's `kMaxServos`. `begin()` calls `servoBackendBegin()` once, attaches every registered servo, and drives it to its neutral angle. `setAngle(ServoId, deg)` and `getCurrentAngle(ServoId)` are thin lookups onto the underlying `Servo`.
+- `src/servo.{h,cpp}` — single-servo driver over a PCA9685. The header declares the public `Servo` API plus `kMaxServos = 16` and `servoBackendBegin()`; the `.cpp` owns the shared `Adafruit_PWMServoDriver` as a file-scope pointer, initialized by `servoBackendBegin()` and used by every `Servo`. 50 Hz, 12-bit resolution (~4.88 µs — below the ~1–3° backlash of a 9g servo, so the chip is not the precision-limiting factor). `attach()`/`detach()`/`setAngle(float)` (clamped to `minAngle`/`maxAngle`, clamped float kept for `getCurrentAngle()`). Not RAII — `attach`/`detach` are explicit so instances live in a `std::vector` inside `ServoManager`.
+- `src/servo_manager.{h,cpp}` — owns the group of registered `Servo`s and dispatches by `ServoId`. The `ServoId` enum value is used as both the array index *and* the PCA9685 channel number, so servos must be registered once per `ServoId` in declaration order. A `static_assert` bounds `ServoId::_Count` to `kMaxServos` (16). `begin()` calls `servoBackendBegin()` once, attaches every registered servo, and drives it to its neutral angle. `setAngle(ServoId, deg)` and `getCurrentAngle(ServoId)` are thin lookups onto the underlying `Servo`.
 - `src/servo_motion.{h,cpp}` — time-based smooth movement on top of `ServoManager`. `moveTo(id, angle, durationMs, easing = EaseInOut)` schedules a movement; `update()` (called from `loop()`) interpolates and writes via `ServoManager::setAngle()`. Per-servo state is independent so multiple servos move concurrently. Re-issuing `moveTo` on a moving servo retargets from `ServoManager::getCurrentAngle()` (the last interpolated value) so the motion stays smooth instead of jumping. `Easing` enum: `Linear`, `EaseIn` (quadratic), `EaseOut` (quadratic), `EaseInOut` (piecewise quadratic). `isIdle()` and `isIdle(ServoId)` report whether motion is still in progress.
 - `src/robot_motion.{h,cpp}` — whole-robot orchestrator on top of `ServoMotion`. Owns the public API (`step`, `rotate`, `sit`, `crouch`, `stand`, `dance`), a fixed-size job ring buffer (`kMaxJobs = 8`, drops on overflow with a serial log), and the public `RobotConfig config` (tunables: leg up/down fractions, body extremes, phase durations, `degreesPerRotation` — adjust at runtime). `update()` ticks whichever mover is currently active; when the mover signals done, the next queued job is dispatched to the appropriate mover. `begin()` dispatches a Stand pose job. `isIdle()` is true when no mover is active and the queue is empty.
 - `src/robot_movers/` — the three independent state machines that `RobotMotion` dispatches into, one file pair per mover. Each owns its own timing/phase state and exposes `start(...)` and `bool update(now)` (returns true when fully done).
@@ -66,7 +65,7 @@ After this, the per-panel 180° flip for the physically opposed panel still appl
 
 `config.h` holds compile-time constants intrinsic to the firmware logic (default 500–2500 µs pulse range) and the `ServoId` enum that defines which logical servos exist. Anything tied to the specific board/wiring lives in `platformio.ini` build flags instead.
 
-Libraries pinned in `platformio.ini`: `bodmer/TFT_eSPI`, `tzapu/WiFiManager`. WiFi/display code is not yet integrated into `main.cpp`. Servos are driven via the framework's built-in LEDC API — no servo library dependency.
+Libraries pinned in `platformio.ini`: `bodmer/TFT_eSPI`, `tzapu/WiFiManager`, `adafruit/Adafruit PWM Servo Driver Library` (PCA9685), `adafruit/Adafruit INA219`. WiFi/display code is not yet integrated into `main.cpp`.
 
 ## Style
 

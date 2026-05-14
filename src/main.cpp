@@ -16,12 +16,8 @@ ServoMotion servoMotion(servoManager);
 RobotMotion robotMotion(servoMotion);
 RobotFace robotFace;
 RobotEyes robotEyes;
-#if defined(INA219_ADDR)
 CurrentSensor currentSensor(INA219_ADDR);
-#else
-CurrentSensor currentSensor;  // stub — INA219 not configured in this env
-#endif
-WebControl webControl(servoManager, servoMotion, currentSensor);
+WebControl webControl(servoManager, servoMotion, robotMotion, robotFace, robotEyes, currentSensor);
 
 static constexpr uint32_t kCurrentPrintIntervalMs = 1000;
 
@@ -74,17 +70,10 @@ static void printHelp() {
     Serial.println("   9     Cycle eye1/eye2/eye3.bmp test image");
     Serial.println("   0     Identify eyes (green R / orange L)");
     Serial.println("   ?     This help");
-#if defined(SERVO_BACKEND_PCA9685)
     Serial.println(" Servo channel mapping (PCA9685):");
     for (size_t i = 0; i < sizeof(kServos) / sizeof(kServos[0]); i++) {
         Serial.printf("   %s = CH %u\n", kServos[i].name, (unsigned)i);
     }
-#else
-    Serial.println(" Servo pin mapping:");
-    for (const ServoSpec& spec : kServos) {
-        Serial.printf("   %s = GPIO %d\n", spec.name, spec.pin);
-    }
-#endif
     Serial.println();
 }
 

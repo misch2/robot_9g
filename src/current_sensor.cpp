@@ -1,7 +1,5 @@
 #include "current_sensor.h"
 
-#if defined(INA219_ADDR)
-
 #include <Adafruit_INA219.h>
 #include <Wire.h>
 
@@ -45,21 +43,3 @@ void CurrentSensor::read() {
     currentMa      = driver->getCurrent_mA();
     powerMw        = driver->getPower_mW();
 }
-
-#else  // !INA219_ADDR — stubs so the LEDC env still links without the lib
-
-CurrentSensor::CurrentSensor(uint8_t i2cAddress)
-    : address(i2cAddress),
-      started(false),
-      driver(nullptr),
-      busVoltageV(0.0f),
-      shuntVoltageMv(0.0f),
-      currentMa(0.0f),
-      powerMw(0.0f) {}
-
-CurrentSensor::~CurrentSensor() {}
-
-bool CurrentSensor::begin(int, int) { return false; }
-void CurrentSensor::read() {}
-
-#endif
