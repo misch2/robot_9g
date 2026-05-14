@@ -19,8 +19,10 @@ public:
     ~ServoManager();
 
     // Builds and attaches every servo from kServos[], driving each to its
-    // restAngle. Call once from setup() after Serial.begin().
-    void begin();
+    // restAngle. Call once from setup() after Serial.begin(). Returns false
+    // if the underlying PCA9685 backend could not be brought up (I2C probe
+    // failed) so the caller can surface the failure on the display.
+    bool begin();
 
     void setAngle(ServoId id, float angle);
     void setFraction(ServoId id, float fraction);

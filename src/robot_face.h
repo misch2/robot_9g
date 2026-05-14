@@ -42,6 +42,11 @@ public:
     // is on the panel; the next update() after boot redraws the full face.
     void showBootMessage(const char* msg);
 
+    // Show a prominent red "ERROR" banner with the given message. Intended
+    // for halting init failures (I2C device missing, etc.) — the caller is
+    // expected to stop calling update() afterward, so the message persists.
+    void showFatalError(const char* msg);
+
 private:
     // Geometry. The TFT is 240x240; nose sits in the upper-middle area
     // and the mouth in the lower area, both centered horizontally.

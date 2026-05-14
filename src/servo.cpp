@@ -26,8 +26,8 @@ Adafruit_PWMServoDriver* g_driver = nullptr;
 bool g_started                    = false;
 }  // namespace
 
-void servoBackendBegin() {
-    if (g_started) return;
+bool servoBackendBegin() {
+    if (g_started) return true;
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
     Wire.setClock(kI2cClockHz);
     // Probe the chip before letting Adafruit_PWMServoDriver::begin() blindly
@@ -35,9 +35,9 @@ void servoBackendBegin() {
     // run with a non-existent servo bus.
     Wire.beginTransmission(PCA9685_ADDR);
     if (Wire.endTransmission() != 0) {
-        Serial.printf("Servo[PCA9685]: NOT FOUND at 0x%02X (SDA=%d SCL=%d) — halting\n",
+        Serial.printf("Servo[PCA9685]: NOT FOUND at 0x%02X (SDA=%d SCL=%d)\n",
                       (unsigned)PCA9685_ADDR, (int)PIN_I2C_SDA, (int)PIN_I2C_SCL);
-        while (true) delay(1000);
+        return false;
     }
     g_driver = new Adafruit_PWMServoDriver(PCA9685_ADDR, Wire);
     g_driver->begin();
@@ -47,6 +47,7 @@ void servoBackendBegin() {
     Serial.printf("Servo[PCA9685]: backend up addr=0x%02X SDA=%d SCL=%d freq=%uHz\n",
                   (unsigned)PCA9685_ADDR, (int)PIN_I2C_SDA, (int)PIN_I2C_SCL,
                   (unsigned)kServoFreqHz);
+    return true;
 }
 
 Servo::Servo(uint8_t channel, int minPulseLength, int maxPulseLength,

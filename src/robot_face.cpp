@@ -30,6 +30,47 @@ void RobotFace::showBootMessage(const char* msg) {
     expressionDirty = true;
 }
 
+void RobotFace::showFatalError(const char* msg) {
+    tft.fillScreen(TFT_RED);
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextColor(TFT_WHITE, TFT_RED);
+    tft.setTextFont(4);
+    tft.drawString("ERROR", 120, 90);
+
+    // Wrap long messages: the 240px round panel realistically fits ~18 chars
+    // of font-4 per line. Split on spaces, draw up to three lines centered.
+    constexpr int kMaxCharsPerLine = 18;
+    constexpr int kLineHeight      = 28;
+    const int baseY                = 130;
+    int lineY                      = baseY;
+    int written                    = 0;
+    const char* p                  = msg ? msg : "";
+    char buf[kMaxCharsPerLine + 1];
+    while (*p && written < 3) {
+        // Skip leading spaces.
+        while (*p == ' ') p++;
+        if (!*p) break;
+        // Find the longest prefix that fits, preferring to break at a space.
+        int len = 0;
+        int lastSpace = -1;
+        while (p[len] && len < kMaxCharsPerLine) {
+            if (p[len] == ' ') lastSpace = len;
+            len++;
+        }
+        int take = len;
+        if (p[len] && lastSpace > 0) take = lastSpace;
+        memcpy(buf, p, take);
+        buf[take] = '\0';
+        tft.drawString(buf, 120, lineY);
+        lineY += kLineHeight;
+        written++;
+        p += take;
+    }
+
+    // Caller should stop calling update() — but force a repaint just in case.
+    expressionDirty = true;
+}
+
 void RobotFace::setExpression(Expression e) {
     if (e == expression) return;
     expression      = e;

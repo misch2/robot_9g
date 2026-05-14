@@ -6,8 +6,10 @@
 inline constexpr size_t kMaxServos = 16;
 
 // One-time backend init: brings up Wire and the shared Adafruit_PWMServoDriver.
-// Must be called before any Servo::attach().
-void servoBackendBegin();
+// Must be called before any Servo::attach(). Returns false if the PCA9685
+// does not ACK on the I2C bus — caller is expected to halt and surface the
+// failure (e.g. on the face display).
+bool servoBackendBegin();
 
 // Drives a single hobby servo through a PCA9685 PWM channel (0..15). Not RAII —
 // attach()/detach() are explicit so instances can live in a std::vector

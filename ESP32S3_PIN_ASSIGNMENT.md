@@ -7,6 +7,7 @@ Source of truth for all assignments below: `build_flags` in `platformio.ini` . C
 - ⏹️ - usable, no caveats
 - ⚠️ - usable but has a constraint (strapping, ADC2+WiFi, USB, etc.)
 - ❌ - must not be used (flash/PSRAM)
+- ⚡ - used for power
 - **N/A** - pin does not exist on ESP32-S3
 
 ## Pin Map
@@ -17,9 +18,9 @@ The `Assignment` column corresponds to the production PlatformIO env `esp32s3` (
 
 | GPIO | Warn | Assignment            | Notes                                               |
 | ---- | ---- | --------------------- | --------------------------------------------------- |
-| 3V3  |      | -                     |                                                     |
-| 3V3  |      | -                     |                                                     |
-| RST  |      | -                     |                                                     |
+| 3V3  | ⚡   | -                     |                                                     |
+| 3V3  | ⚡   | -                     |                                                     |
+| RST  | ⚡   | -                     |                                                     |
 | 4    |      | PIN_I2C_SDA (PCA9685) | ADC1                                                |
 | 5    |      | PIN_I2C_SCL (PCA9685) | ADC1                                                |
 | 6    |      | PIN_PCA9685_OE        | PCA9685 ŌĒ (HIGH = outputs disabled, LOW = enabled) |
@@ -37,14 +38,14 @@ The `Assignment` column corresponds to the production PlatformIO env `esp32s3` (
 | 12   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |
 | 13   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |
 | 14   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |
-| 5V0  |      | -                     |                                                     |
-| GND  |      | -                     |                                                     |
+| 5V0  | ⚡   | -                     |                                                     |
+| GND  | ⚡   | -                     |                                                     |
 
 ### Right side (looking from above, USB-C is at the bottom)
 
 | GPIO  | Warn | Assignment                  | Notes                                                                |
 | ----- | ---- | --------------------------- | -------------------------------------------------------------------- |
-| GND   |      | -                           |                                                                      |
+| GND   | ⚡   | -                           |                                                                      |
 | 43    | ⚠️   | -                           | UART0 TX (default Serial when CDC-on-boot is off)                    |
 | 44    | ⚠️   | -                           | UART0 RX (default Serial when CDC-on-boot is off)                    |
 | 1     |      | PIN_TFT_RST1 (right eye)    | ADC1                                                                 |
@@ -62,8 +63,8 @@ The `Assignment` column corresponds to the production PlatformIO env `esp32s3` (
 | 21    |      | ⏹️                          |                                                                      |
 | 20    | ⚠️   | -                           | USB D+. ADC2. Conflicts with native USB if active.                   |
 | 19    | ⚠️   | -                           | USB D− (used by native USB-Serial when `ARDUINO_USB_MODE=1` ). ADC2. |
-| GND   |      | -                           |                                                                      |
-| GND   |      | -                           |                                                                      |
+| GND   | ⚡   | -                           |                                                                      |
+| GND   | ⚡   | -                           |                                                                      |
 
 ### Pins not made accessible on this specific board
 
