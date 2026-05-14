@@ -206,43 +206,46 @@ static void processSerialInput() {
 
 void setup() {
     Serial.begin(115200);
-    delay(2000);
+    // delay(2000);
     Serial.println("Starting...");
     Serial.printf("Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
+
+    robotFace.begin();
+    robotFace.showBootMessage("Checking health...");
 
 #if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
     scanI2cBus();
 #endif
 
-    robotFace.begin();
-
-    robotFace.showBootMessage("Init eyes...");
+    robotFace.showBootMessage("Rubbing eyes...");
     robotEyes.begin();
 
-    robotFace.showBootMessage("Init servos...");
+    robotFace.showBootMessage("Stretching muscles...");
     if (!servoManager.begin()) {
         robotFace.showFatalError("PCA9685 servo board not found on I2C");
         robotEyes.showFatalError();
         Serial.println("PCA9685 missing — halting setup");
-        while (true) delay(1000);
+        while (true) delay(1000);  // FIXME watchdog will reset after 5s, so this isn't truly halting
     }
     robotMotion.begin();
 
 #if defined(INA219_ADDR) && defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
-    robotFace.showBootMessage("Init INA219...");
+    robotFace.showBootMessage("Checking senses...");
     if (!currentSensor.begin(PIN_I2C_SDA, PIN_I2C_SCL)) {
         robotFace.showFatalError("INA219 current sensor not found on I2C");
         robotEyes.showFatalError();
         Serial.println("INA219 missing — halting setup");
-        while (true) delay(1000);
+        while (true) delay(1000);  // FIXME watchdog will reset after 5s, so this isn't truly halting
     }
 #endif
-    robotFace.showBootMessage("Init WiFi...");
+    robotFace.showBootMessage("Checking radio waves...");
     webControl.begin();
+
     // Draw the face right here instead of relying on the first loop() tick
     // to clear the last boot message — keeps the panel in a deterministic
     // state before WiFi tasks start competing for SPI/CPU time.
-    robotFace.update();
+    robotFace.showBootMessage("Ready!");
+    // robotFace.update();
 
     // FIXME debugging
     // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
