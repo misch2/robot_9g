@@ -21,6 +21,7 @@ Example (matches the eye1 conversion checked into the repo):
 """
 
 import argparse
+import os
 import struct
 from pathlib import Path
 from typing import Iterable
@@ -134,8 +135,9 @@ def convert(src: Path, dst: Path, name: str, size: int | None) -> None:
     )
     values = list(values)
 
+    rel_src = Path(os.path.relpath(src, Path.cwd())).as_posix()
     lines = [
-        f"// Auto-generated from {src.as_posix()} by tools/bmp_to_header.py -- do not edit by hand.",
+        f"// Auto-generated from {rel_src} by tools/bmp_to_header.py -- do not edit by hand.",
         f"// Source image was {src_w}x{src_h}; output is {w}x{h} RGB565 (host byte order).",
         "#pragma once",
         "",
