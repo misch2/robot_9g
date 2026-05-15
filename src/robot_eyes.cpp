@@ -6,6 +6,7 @@
 #include "assets/eye1_data.h"
 #include "assets/eye2_data.h"
 #include "assets/eye3_data.h"
+#include "assets/eye4_spiral_data.h"
 
 namespace {
 constexpr uint16_t kBgColor    = TFT_BLACK;
@@ -273,38 +274,19 @@ void RobotEyes::showIdentify() {
 void RobotEyes::showFatalError() {
     if (!eyeSprite.getPointer()) return;
 
-    // Archimedean spiral overlay on a cyan disc — the cartoon "dizzy /
-    // confused eyes" trope. Drawn in upright sprite coordinates; pushSprite()
-    // handles the per-panel rotation + flip. We redraw between pushes
-    // because pushSprite() mutates the buffer in place.
-    auto draw = [this]() {
-        constexpr int cx        = kDisplayW / 2;
-        constexpr int cy        = kDisplayH / 2;
-        constexpr float kStep   = 0.18f;
-        constexpr float kA      = 1.8f;
-        constexpr float kMaxR   = 70.0f;
-        constexpr float kThick  = 4.0f;
-        eyeSprite.fillSprite(kBgColor);
-        eyeSprite.fillSmoothCircle(cx, cy, (int)kMaxR + 4, kEyeColor, kBgColor);
-        float prevX = cx;
-        float prevY = cy;
-        for (int i = 1; i < 400; ++i) {
-            float t = i * kStep;
-            float r = kA * t;
-            if (r > kMaxR) break;
-            float x = cx + cosf(t) * r;
-            float y = cy + sinf(t) * r;
-            eyeSprite.drawWideLine((int)prevX, (int)prevY, (int)x, (int)y,
-                                   kThick, kPupilColor, kEyeColor);
-            prevX = x;
-            prevY = y;
-        }
-    };
-
-    draw();
-    pushSprite(0);
-    draw();
-    pushSprite(1);
+    // Pre-rendered spiral asset — same "dizzy eyes" trope as before, but
+    // baked at conversion time so we skip the runtime line-drawing. Asset
+    // is pre-rotated by tools/image_to_header.py, hence alreadyRotated=true.
+    // Panel 0 must be pushed first because pushSprite() applies an in-place
+    // 180° flip to the buffer for kFlipPanel.
+    using namespace assets;
+    const int ox = (kDisplayW - kEye4_spiralWidth) / 2;
+    const int oy = (kDisplayH - kEye4_spiralHeight) / 2;
+    eyeSprite.fillSprite(kBgColor);
+    eyeSprite.pushImage(ox, oy, kEye4_spiralWidth, kEye4_spiralHeight, kEye4_spiralPixels);
+    static_assert(kLeftEyePanel == 1, "push order assumes left eye is panel 1");
+    pushSprite(0, /*alreadyRotated=*/true);
+    pushSprite(1, /*alreadyRotated=*/true);
 
     showingTestImage = true;
 }
