@@ -24,7 +24,12 @@ constexpr uint16_t kPwmOff     = 4096;  // "fully off" sentinel in the PCA9685 O
 // Serial/Wire are up.
 Adafruit_PWMServoDriver* g_driver = nullptr;
 bool g_started                    = false;
+ServoFatalHandler g_fatalHandler  = nullptr;
 }  // namespace
+
+void servoSetFatalHandler(ServoFatalHandler handler) {
+    g_fatalHandler = handler;
+}
 
 bool servoBackendBegin() {
     if (g_started) return true;
@@ -50,9 +55,11 @@ bool servoBackendBegin() {
     return true;
 }
 
-Servo::Servo(uint8_t channel, int minPulseLength, int maxPulseLength,
+Servo::Servo(uint8_t channel, const char* name,
+             int minPulseLength, int maxPulseLength,
              int minAngle, int maxAngle, int neutralAngle)
     : channel(channel),
+      name(name ? name : "?"),
       minPulseLength(minPulseLength),
       maxPulseLength(maxPulseLength),
       minAngle(minAngle),
@@ -100,6 +107,28 @@ void Servo::setAngle(float angle) {
     float clamped = clampAngle(angle);
     currentAngle  = clamped;
     int us        = angleToMicroseconds(clamped);
+    if (us < kServoHardMinPulseUs || us > kServoHardMaxPulseUs) {
+        // A pulse outside the hard safety window means the per-servo angle
+        // limits in config.h are inconsistent with the pulse range — driving
+        // it would stall the motor against its end stop and burn out the
+        // gears. Refuse to write, log, surface on the display, and halt.
+        const int breachedLimit = (us < kServoHardMinPulseUs) ? kServoHardMinPulseUs
+                                                              : kServoHardMaxPulseUs;
+        const char* side        = (us < kServoHardMinPulseUs) ? "MIN" : "MAX";
+        Serial.printf("Servo[PCA9685]: FATAL ch #%u (%s) req_angle %.1f° -> %d µs "
+                      "breaches hard %s limit %d µs (range %d..%d µs)\n",
+                      (unsigned)channel, name, angle, us, side, breachedLimit,
+                      kServoHardMinPulseUs, kServoHardMaxPulseUs);
+        if (g_fatalHandler) {
+            char msg[96];
+            snprintf(msg, sizeof(msg), "%s: %d us > %s %d us",
+                     name, us, side, breachedLimit);
+            g_fatalHandler(msg);
+        }
+        while (true) delay(1000);
+    }
     if (us != lastPulseUs) lastPulseUs = us;
+    Serial.printf("Servo[PCA9685]: ch #%u (%s) req_angle %3.1f ° -> clamped %3.1f ° -> %d µs\n",
+                  (unsigned)channel, name, currentAngle, clamped, us);
     writeMicroseconds(us);
 }

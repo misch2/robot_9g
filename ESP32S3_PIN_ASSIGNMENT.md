@@ -16,6 +16,8 @@ The `Assignment` column corresponds to the production PlatformIO env `esp32s3` (
 
 ### Left side (looking from above, USB-C is at the bottom)
 
+FIXME FIXME audio module = LRC, BCLK, DIN, GAIN, SD, GND, VIN
+
 | GPIO | Warn | Assignment            | Notes                                               |
 | ---- | ---- | --------------------- | --------------------------------------------------- |
 | 3V3  | ⚡   | -                     |                                                     |
@@ -29,11 +31,11 @@ The `Assignment` column corresponds to the production PlatformIO env `esp32s3` (
 | 16   |      | TFT_DC (mouth)        | ADC2 - unavailable for ADC when WiFi is up          |
 | 17   |      | TFT_MOSI (mouth)      | ADC2 - unavailable for ADC when WiFi is up          |
 | 18   |      | TFT_SCLK (mouth)      | ADC2 - unavailable for ADC when WiFi is up          |
-| 8    |      | ⏹️                    |                                                     |
+| 8    |      | I2S_SPEAKER_LRC       |                                                     |
 | 3    | ⚠️   | -                     | Strapping. Avoid.                                   |
 | 46   | ⚠️   | -                     | Strapping. Avoid.                                   |
-| 9    |      | ⏹️                    | ADC1                                                |
-| 10   |      | ⏹️                    | ADC1                                                |
+| 9    |      | I2S_SPEAKER_BCLK      | ADC1                                                |
+| 10   |      | I2S_SPEAKER_DIN       | ADC1                                                |
 | 11   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |
 | 12   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |
 | 13   |      | ⏹️                    | ADC2 - unavailable for ADC when WiFi is up          |

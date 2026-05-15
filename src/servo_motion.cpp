@@ -37,7 +37,10 @@ void ServoMotion::moveTo(ServoId id, float angle, uint32_t durationMs, Easing ea
     m.active      = true;
 
     const ServoSpec& spec = kServos[i];
-    Serial.printf("Motion request: %s (%d) -> %.1f° over %u ms (easing %u)\n", spec.name, (int)id, angle, durationMs, (unsigned)easing);
+    // Serial.printf("Motion request: %s (%d) -> %.1f° over %u ms (easing %u)\n", spec.name, (int)id, angle, durationMs, (unsigned)easing);
+
+    float oldAngle = manager.getCurrentAngle(id);
+    Serial.printf("Motion request: %s[#%d] %.1f° -> %.1f° (%.1f°) over %u ms (easing %u)\n", spec.name, (int)id, oldAngle, angle, abs(angle - oldAngle), durationMs, (unsigned)easing);
 }
 
 void ServoMotion::moveToFraction(ServoId id, float fraction, uint32_t durationMs, Easing easing) {

@@ -15,7 +15,7 @@ bool ServoManager::begin() {
     if (!servoBackendBegin()) return false;
     for (size_t i = 0; i < kCount; i++) {
         const ServoSpec& spec = kServos[i];
-        servos.emplace_back((uint8_t)i, SERVO_MIN_PULSE, SERVO_MAX_PULSE,
+        servos.emplace_back((uint8_t)i, spec.name, SERVO_MIN_PULSE, SERVO_MAX_PULSE,
                             spec.minAngle, spec.maxAngle, (int)lroundf(spec.restAngle));
         Serial.printf("ServoManager: id=%u (%s) ch=%u range=[%d..%d] rest=%.1f primary=%+d\n",
                       (unsigned)i, spec.name, (unsigned)i, spec.minAngle, spec.maxAngle,

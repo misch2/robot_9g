@@ -19,11 +19,11 @@ RobotEyes robotEyes;
 CurrentSensor currentSensor(INA219_ADDR);
 WebControl webControl(servoManager, servoMotion, robotMotion, robotFace, robotEyes, currentSensor);
 
-static constexpr uint32_t kCurrentPrintIntervalMs = 1000;
+static constexpr uint32_t kCurrentPrintIntervalMs = 60000;
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
 // Use this duration for all of them so the visual feedback is consistent.
-static constexpr uint32_t kDirectMoveMs = 250;
+static constexpr uint32_t kDirectMoveMs = 0;  // 0 = debug, 250 = standard move duration (FIXME)
 
 #if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
 static void scanI2cBus() {
@@ -49,10 +49,10 @@ static void printHelp() {
     Serial.println();
     Serial.println("=== Robot debug keys ===");
     Serial.println(" Direct servos (lowercase = down/back, near-shift = up/forward):");
-    Serial.println("   q/a   FrontLeft  up/down");
-    Serial.println("   w/s   FrontRight up/down");
-    Serial.println("   e/d   RearLeft   up/down");
-    Serial.println("   r/f   RearRight  up/down");
+    Serial.println("   q/a   FrontLeft  stand/crouch");
+    Serial.println("   w/s   FrontRight stand/crouch");
+    Serial.println("   e/d   RearLeft   stand/crouch");
+    Serial.println("   r/f   RearRight  stand/crouch");
     Serial.println("   t/g   Translation forward/backward");
     Serial.println("   y/h   Rotation    left/right");
     Serial.println("   u/o   Head        left/right");
@@ -81,28 +81,28 @@ static void handleKey(char c) {
     const auto& cfg = robotMotion.config;
     switch (c) {
         // --- Direct leg control ---
-        case 'q':
+        case 'a':
             servoMotion.moveToFraction(ServoId::FrontLeft, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
-        case 'a':
+        case 'q':
             servoMotion.moveToFraction(ServoId::FrontLeft, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
-        case 'w':
+        case 's':
             servoMotion.moveToFraction(ServoId::FrontRight, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
-        case 's':
+        case 'w':
             servoMotion.moveToFraction(ServoId::FrontRight, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
-        case 'e':
+        case 'd':
             servoMotion.moveToFraction(ServoId::RearLeft, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
-        case 'd':
+        case 'e':
             servoMotion.moveToFraction(ServoId::RearLeft, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
-        case 'r':
+        case 'f':
             servoMotion.moveToFraction(ServoId::RearRight, cfg.liftFraction, cfg.scaled(kDirectMoveMs));
             break;
-        case 'f':
+        case 'r':
             servoMotion.moveToFraction(ServoId::RearRight, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
@@ -221,6 +221,10 @@ void setup() {
     robotEyes.begin();
 
     robotFace.showBootMessage("Stretching muscles...");
+    servoSetFatalHandler([](const char* msg) {
+        robotFace.showFatalError(msg);
+        robotEyes.showFatalError();
+    });
     if (!servoManager.begin()) {
         robotFace.showFatalError("PCA9685 servo board not found on I2C");
         robotEyes.showFatalError();
@@ -261,6 +265,11 @@ void setup() {
     // robotMotion.config.legLiftMs = 10;
     // robotMotion.config.actuateMs = 10;
     // robotMotion.config.legDropMs = 10;
+
+    // FIXME Debugging:
+    robotMotion.config.speedFactor    = 0.25f;  // slow
+    robotMotion.config.liftFraction   = 1.0f;   // full
+    robotMotion.config.crouchFraction = 1.0f;   // full
 
     printHelp();
 }

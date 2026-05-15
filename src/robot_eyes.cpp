@@ -286,6 +286,9 @@ void RobotEyes::showFatalError() {
     eyeSprite.pushImage(ox, oy, kEye4_spiralWidth, kEye4_spiralHeight, kEye4_spiralPixels);
     static_assert(kLeftEyePanel == 1, "push order assumes left eye is panel 1");
     pushSprite(0, /*alreadyRotated=*/true);
+    if (uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer())) {
+        mirrorVerticalInPlace(buf, kDisplayW, kDisplayH);
+    }
     pushSprite(1, /*alreadyRotated=*/true);
 
     showingTestImage = true;

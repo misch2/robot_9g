@@ -13,8 +13,8 @@ enum class ServoId : uint8_t {
     FrontRight,
     RearLeft,
     RearRight,
-    Rotation,
     Translation,
+    Rotation,
     HeadPan,
     HeadTilt,
     _Count
@@ -34,28 +34,27 @@ struct ServoSpec {
     int8_t primaryDirection;
 };
 
-constexpr float legAngleRange = 90.0f;  // how far each leg servo can lift from its rest position toward the primary limit, in degrees. Tune to your geometry and HW limits.
-
-// Left side: fully raised foot = lowest angle
-constexpr float frontLeftMinAngle = 7.0f;
-constexpr float rearLeftMinAngle  = 0.0f;
-// Right side: fully raised foot = highest angle
-constexpr float frontRightMinAngle = 180.0f;
-constexpr float rearRightMinAngle  = 180.0f;
-
 // Hardware-specific servo configuration. Tune these to your geometry and HW limits.
 constexpr ServoSpec kServos[] = {
-    //
-    {ServoId::FrontLeft,   "FrontLeft",   frontLeftMinAngle,  frontLeftMinAngle + legAngleRange,  frontLeftMinAngle + legAngleRange, -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
-    {ServoId::FrontRight,  "FrontRight",  frontRightMinAngle, frontRightMinAngle + legAngleRange, frontRightMinAngle,                +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::RearLeft,    "RearLeft",    rearLeftMinAngle,   rearLeftMinAngle + legAngleRange,   rearLeftMinAngle + legAngleRange,  -1}, // rest = standing (extended); primary = foot up (toward 0)
-    {ServoId::RearRight,   "RearRight",   rearRightMinAngle,  rearRightMinAngle + legAngleRange,  rearRightMinAngle,                 +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::Rotation,    "Rotation",    25.0f,              100.0f,                             100.0f,                            -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
-    {ServoId::Translation, "Translation", 0.0f,               175.0f,                             67.0f,                             +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
+    // id, name,          minAngle, maxAngle, restAngle, primaryDirection
+
+    // FrontLeft: 0 (fully bent) - 110 (fully straight)
+    // FrontRight: 0 (fully bent) - 100 (fully straight)
+    // RearLeft: 180 (fully bent) - 70 (fully straight)
+    // RearRight: 180 (fully bent) - 70 (fully straight)
+    {ServoId::FrontLeft,   "FrontLeft",   0.0f,  110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
+    {ServoId::FrontRight,  "FrontRight",  0.0f,  100.0f, 100.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::RearLeft,    "RearLeft",    70.0f, 180.0f, 180.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::RearRight,   "RearRight",   70.0f, 180.0f, 180.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
+
+    // Slider: 0 (fully retracted) - 170 (fully extended), 70 is a neutral
+    // Rotator: 100 (neutral) - 10 (fully rotated)
+    {ServoId::Translation, "Translation", 0.0f,  170.0f, 70.0f,  +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
+    {ServoId::Rotation,    "Rotation",    10.0f, 100.0f, 100.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
 
     // can't allow more, it would collide with electronics (step down converter)
-    {ServoId::HeadPan,     "HeadPan",     40.0f,              130.0f,                             90.0f,                             +1}, // rest = look forward, primary = turn head left
-    {ServoId::HeadTilt,    "HeadTilt",    45.0f,              145.0f,                             85.0f,                             +1}, // rest = look forward, primary = tilt head up
+    {ServoId::HeadPan,     "HeadPan",     40.0f, 130.0f, 90.0f,  +1}, // rest = look forward, primary = turn head left
+    {ServoId::HeadTilt,    "HeadTilt",    45.0f, 145.0f, 85.0f,  +1}, // rest = look forward, primary = tilt head up
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),
