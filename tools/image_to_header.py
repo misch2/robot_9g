@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a BMP (or any PIL-readable image) to a C++ RGB565 header.
+"""Convert any PIL-readable image (BMP, PNG, JPEG, ...) to a C++ RGB565 header.
 
 The output is a `#pragma once` header that defines, inside namespace `assets`:
 
@@ -13,11 +13,15 @@ For 16bpp BMPs the file is decoded directly (PIL's reader for 16bpp
 BI_BITFIELDS is unreliable and produces garbled colors). Other formats
 are routed through PIL.
 
+When --size N is given, the source is scaled and *center-cropped* so the
+NxN destination square is fully filled while preserving aspect ratio
+(cover behavior — excess pixels along the longer axis are discarded).
+
 Usage:
-    python tools/bmp_to_header.py <input> <output.h> <name> [--size N]
+    python tools/image_to_header.py <input> <output.h> <name> [--size N]
 
 Example (matches the eye1 conversion checked into the repo):
-    python tools/bmp_to_header.py src/assets/eye1.bmp src/assets/eye1_data.h Eye1 --size 160
+    python tools/image_to_header.py src/assets/eye1.bmp src/assets/eye1_data.h Eye1 --size 160
 """
 
 import argparse
@@ -118,11 +122,24 @@ def load_image(src: Path) -> Image.Image:
     return Image.open(src).convert("RGB")
 
 
+def cover_resize(img: Image.Image, size: int) -> Image.Image:
+    """Scale + center-crop so the result is exactly size x size and fills it,
+    preserving the source aspect ratio (CSS `object-fit: cover` semantics)."""
+    src_w, src_h = img.size
+    scale = size / min(src_w, src_h)
+    new_w = max(size, round(src_w * scale))
+    new_h = max(size, round(src_h * scale))
+    img = img.resize((new_w, new_h), Image.LANCZOS)
+    left = (new_w - size) // 2
+    top  = (new_h - size) // 2
+    return img.crop((left, top, left + size, top + size))
+
+
 def convert(src: Path, dst: Path, name: str, size: int | None) -> None:
     img = load_image(src)
     src_w, src_h = img.size
     if size is not None:
-        img = img.resize((size, size), Image.LANCZOS)
+        img = cover_resize(img, size)
     # Pre-rotate 90° CW so the on-panel orientation comes out upright with
     # the eyes_debug renderer's drawBitmap16Data path (PIL's ROTATE_270 is
     # a 90° clockwise rotation).
@@ -137,7 +154,7 @@ def convert(src: Path, dst: Path, name: str, size: int | None) -> None:
 
     rel_src = Path(os.path.relpath(src, Path.cwd())).as_posix()
     lines = [
-        f"// Auto-generated from {rel_src} by tools/bmp_to_header.py -- do not edit by hand.",
+        f"// Auto-generated from {rel_src} by tools/image_to_header.py -- do not edit by hand.",
         f"// Source image was {src_w}x{src_h}; output is {w}x{h} RGB565 (host byte order).",
         "#pragma once",
         "",

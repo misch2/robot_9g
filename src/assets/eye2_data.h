@@ -1,4 +1,4 @@
-// Auto-generated from src/assets/eye2.bmp by tools/bmp_to_header.py -- do not edit by hand.
+// Auto-generated from src/assets/eye2.bmp by tools/image_to_header.py -- do not edit by hand.
 // Source image was 160x160; output is 160x160 RGB565 (host byte order).
 #pragma once
 

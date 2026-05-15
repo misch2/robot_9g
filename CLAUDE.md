@@ -60,7 +60,7 @@ The two display classes are kept in sync from `main.cpp`, which forwards every `
 
 Orientation contract for `RobotEyes`: with MADCTL `Degrees_0` the GC9D01 displays the buffer rotated 90° CCW visually. Two paths cancel that out:
 - Procedurally drawn sprites (eye capsule, brow, …): drawn in upright sprite coordinates, then `pushSprite()` applies an in-place 90° CW rotation before SPI burst (default `alreadyRotated=false`).
-- BMP assets in `src/assets/eye*_data.h`: `tools/bmp_to_header.py` pre-rotates 90° CW at conversion time, so `showTestImage()` and any other BMP path calls `pushSprite(idx, /*alreadyRotated=*/true)` to skip the runtime rotation.
+- BMP assets in `src/assets/eye*_data.h`: `tools/image_to_header.py` pre-rotates 90° CW at conversion time, so `showTestImage()` and any other BMP path calls `pushSprite(idx, /*alreadyRotated=*/true)` to skip the runtime rotation.
 After this, the per-panel 180° flip for the physically opposed panel still applies on top.
 
 `config.h` holds compile-time constants intrinsic to the firmware logic (default 500–2500 µs pulse range) and the `ServoId` enum that defines which logical servos exist. Anything tied to the specific board/wiring lives in `platformio.ini` build flags instead.

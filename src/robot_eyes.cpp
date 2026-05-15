@@ -86,7 +86,7 @@ inline void mirrorVerticalInPlace(uint16_t* buf, int w, int h) {
 // buffer pixels rotated 90° CCW visually; pre-rotating the sprite 90°
 // CW here cancels that out so content drawn in upright sprite
 // coordinates appears upright on the panel. Same logic that
-// tools/bmp_to_header.py applies at conversion time for the BMP assets;
+// tools/image_to_header.py applies at conversion time for the BMP assets;
 // done here at runtime for the procedurally rendered sprite.
 inline void rotate90CWInPlace(uint16_t* buf, int n) {
     for (int layer = 0; layer < n / 2; ++layer) {
@@ -177,7 +177,7 @@ void RobotEyes::pushSprite(int idx, bool alreadyRotated) {
     // coordinates, so we rotate the buffer 90° CW before push to cancel
     // the panel's intrinsic 90° CCW display orientation.
     // alreadyRotated=true: buffer is already in panel-native orientation
-    // (e.g. BMP assets pre-rotated by tools/bmp_to_header.py); skip the
+    // (e.g. BMP assets pre-rotated by tools/image_to_header.py); skip the
     // 90° rotation and only apply the per-panel 180° flip.
     uint16_t* buf = static_cast<uint16_t*>(eyeSprite.getPointer());
     if (!buf) return;
@@ -224,7 +224,7 @@ int RobotEyes::showTestImage() {
     const int ox      = (kDisplayW - a.w) / 2;
     const int oy      = (kDisplayH - a.h) / 2;
 
-    // BMP asset is pre-rotated by tools/bmp_to_header.py to match the
+    // BMP asset is pre-rotated by tools/image_to_header.py to match the
     // panel's native orientation, so pushSprite skips its 90° CW rotation
     // step here. pushSprite() applies a 180° in-place flip on kFlipPanel
     // to compensate for that panel's physical 180° mounting; the

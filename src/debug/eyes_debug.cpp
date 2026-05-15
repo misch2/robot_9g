@@ -24,6 +24,8 @@
 #include "../assets/eye1_data.h"
 #include "../assets/eye2_data.h"
 #include "../assets/eye3_data.h"
+#include "../assets/eye4_spiral_data.h"
+#include "../assets/eye5_spiral_data.h"
 
 namespace {
 
@@ -196,7 +198,7 @@ void testSpritePipeline() {
 // pipeline. Panel 1 receives a V-flipped copy of the source so that, once
 // pushSpriteTo(1) applies its physical-mount 180° compensation, the two
 // eyes appear mirrored on screen (the source bitmap is itself pre-rotated
-// 90° CW by tools/bmp_to_header.py, so a V-flip in source space lands as
+// 90° CW by tools/image_to_header.py, so a V-flip in source space lands as
 // an H-flip in viewer space). '2' toggles the cycle on/off; loop() ticks
 // tickEyeCycle() to advance frames.
 
@@ -211,6 +213,8 @@ constexpr EyeFrame kEyeFrames[] = {
     {assets::kEye1Pixels, assets::kEye1Width, assets::kEye1Height, "eye1"},
     {assets::kEye2Pixels, assets::kEye2Width, assets::kEye2Height, "eye2"},
     {assets::kEye3Pixels, assets::kEye3Width, assets::kEye3Height, "eye3"},
+    {assets::kEye4_spiralPixels, assets::kEye4_spiralWidth, assets::kEye4_spiralHeight, "eye4_spiral"},
+    {assets::kEye5_spiralPixels, assets::kEye5_spiralWidth, assets::kEye5_spiralHeight, "eye5_spiral"},
 };
 constexpr int      kEyeFrameCount      = sizeof(kEyeFrames) / sizeof(kEyeFrames[0]);
 constexpr uint32_t kEyeCycleIntervalMs = 5000;
