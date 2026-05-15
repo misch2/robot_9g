@@ -23,7 +23,7 @@ static constexpr uint32_t kCurrentPrintIntervalMs = 60000;
 
 // Direct-servo keypresses bypass RobotMotion and drive ServoMotion straight.
 // Use this duration for all of them so the visual feedback is consistent.
-static constexpr uint32_t kDirectMoveMs = 0;  // 0 = debug, 250 = standard move duration (FIXME)
+static constexpr uint32_t kDirectMoveMs = 250;  // 0 = debug, 250 = standard move duration (FIXME)
 
 #if defined(PIN_I2C_SDA) && defined(PIN_I2C_SCL)
 static void scanI2cBus() {
@@ -55,7 +55,8 @@ static void printHelp() {
     Serial.println("   r/f   RearRight  stand/crouch");
     Serial.println("   t/g   Translation forward/backward");
     Serial.println("   y/h   Rotation    left/right");
-    Serial.println("   u/o   Head        left/right");
+    Serial.println("   u/o   HeadPan     left/right");
+    Serial.println("   p/;   HeadTilt    up/down");
     Serial.println("   b     Body + head actuators -> neutral");
     Serial.println(" Movements (queued):");
     Serial.println("   i / k Step forward / backward (one full stride)");
@@ -125,10 +126,17 @@ static void handleKey(char c) {
         case 'o':
             servoMotion.moveToFraction(ServoId::HeadPan, -1.0f, cfg.scaled(kDirectMoveMs));
             break;
+        case 'p':
+            servoMotion.moveToFraction(ServoId::HeadTilt, +1.0f, cfg.scaled(kDirectMoveMs));
+            break;
+        case ';':
+            servoMotion.moveToFraction(ServoId::HeadTilt, -1.0f, cfg.scaled(kDirectMoveMs));
+            break;
         case 'b':
             servoMotion.moveToFraction(ServoId::Translation, 0.0f, cfg.scaled(kDirectMoveMs));
             servoMotion.moveToFraction(ServoId::Rotation, 0.0f, cfg.scaled(kDirectMoveMs));
             servoMotion.moveToFraction(ServoId::HeadPan, 0.0f, cfg.scaled(kDirectMoveMs));
+            servoMotion.moveToFraction(ServoId::HeadTilt, 0.0f, cfg.scaled(kDirectMoveMs));
             break;
 
         // --- Queued whole-robot movements ---
@@ -253,6 +261,7 @@ void setup() {
 
     // FIXME debugging
     // robotMotion.config.speedFactor = 0.25f;  // 0.1f;  // 10x slower for debugging
+    robotMotion.config.speedFactor = 0.5f;
 
     // leg movement tuning
     robotMotion.config.liftFraction   = 0.67f;  // 0.33f;  // lift legs to 33% of their available range to speed up movement (no need to lift knees up to chest :-))
@@ -260,16 +269,16 @@ void setup() {
 
     // whole body movement tuning:
     // FIXME this is shared for both translation and rotation!!!
-    robotMotion.config.actuateFraction = 0.5f;  // 1.0f;  // maximum length of the step
+    robotMotion.config.actuateFraction = 1.0f;  // maximum length of the step
 
     // robotMotion.config.legLiftMs = 10;
     // robotMotion.config.actuateMs = 10;
     // robotMotion.config.legDropMs = 10;
 
     // FIXME Debugging:
-    robotMotion.config.speedFactor    = 0.25f;  // slow
-    robotMotion.config.liftFraction   = 1.0f;   // full
-    robotMotion.config.crouchFraction = 1.0f;   // full
+    // robotMotion.config.speedFactor    = 0.25f;  // slow
+    // robotMotion.config.liftFraction   = 1.0f;   // full
+    // robotMotion.config.crouchFraction = 1.0f;   // full
 
     printHelp();
 }

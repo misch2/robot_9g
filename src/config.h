@@ -54,7 +54,7 @@ constexpr ServoSpec kServos[] = {
 
     // can't allow more, it would collide with electronics (step down converter)
     {ServoId::HeadPan,     "HeadPan",     40.0f, 130.0f, 90.0f,  +1}, // rest = look forward, primary = turn head left
-    {ServoId::HeadTilt,    "HeadTilt",    45.0f, 145.0f, 85.0f,  +1}, // rest = look forward, primary = tilt head up
+    {ServoId::HeadTilt,    "HeadTilt",    60.0f, 155.0f, 95.0f,  +1}, // rest = look forward, primary = tilt head up
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),
