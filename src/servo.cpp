@@ -115,10 +115,11 @@ void Servo::setAngle(float angle) {
         const int breachedLimit = (us < kServoHardMinPulseUs) ? kServoHardMinPulseUs
                                                               : kServoHardMaxPulseUs;
         const char* side        = (us < kServoHardMinPulseUs) ? "MIN" : "MAX";
-        Serial.printf("Servo[PCA9685]: FATAL ch #%u (%s) req_angle %.1f° -> %d µs "
-                      "breaches hard %s limit %d µs (range %d..%d µs)\n",
-                      (unsigned)channel, name, angle, us, side, breachedLimit,
-                      kServoHardMinPulseUs, kServoHardMaxPulseUs);
+        Serial.printf(
+            "Servo[PCA9685]: FATAL ch #%u (%s) req_angle %.1f° -> %d µs "
+            "breaches hard %s limit %d µs (range %d..%d µs)\n",
+            (unsigned)channel, name, angle, us, side, breachedLimit,
+            kServoHardMinPulseUs, kServoHardMaxPulseUs);
         if (g_fatalHandler) {
             char msg[96];
             snprintf(msg, sizeof(msg), "%s: %d us > %s %d us",
@@ -128,7 +129,7 @@ void Servo::setAngle(float angle) {
         while (true) delay(1000);
     }
     if (us != lastPulseUs) lastPulseUs = us;
-    Serial.printf("Servo[PCA9685]: ch #%u (%s) req_angle %3.1f ° -> clamped %3.1f ° -> %d µs\n",
-                  (unsigned)channel, name, currentAngle, clamped, us);
+    // Serial.printf("Servo[PCA9685]: ch #%u (%s) req_angle %3.1f ° -> clamped %3.1f ° -> %d µs\n",
+    //               (unsigned)channel, name, currentAngle, clamped, us);
     writeMicroseconds(us);
 }

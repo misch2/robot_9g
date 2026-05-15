@@ -39,13 +39,13 @@ constexpr ServoSpec kServos[] = {
     // id, name,          minAngle, maxAngle, restAngle, primaryDirection
 
     // FrontLeft: 0 (fully bent) - 110 (fully straight)
-    // FrontRight: 0 (fully bent) - 100 (fully straight)
-    // RearLeft: 180 (fully bent) - 70 (fully straight)
-    // RearRight: 180 (fully bent) - 70 (fully straight)
-    {ServoId::FrontLeft,   "FrontLeft",   0.0f,  110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0). Extra 5° beyond 90 on the rest side accommodates full standing extension.
-    {ServoId::FrontRight,  "FrontRight",  0.0f,  100.0f, 100.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::RearLeft,    "RearLeft",    70.0f, 180.0f, 180.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
-    {ServoId::RearRight,   "RearRight",   70.0f, 180.0f, 180.0f, +1}, // rest = standing (extended); primary = foot up (toward 180)
+    // FrontRight: 70 (fully straight) - 180 (fully bent)
+    // RearLeft: 0 (fully bent) - 100 (fully straight)
+    // RearRight: 70 (fully straight) - 180 (fully bent)
+    {ServoId::FrontLeft,   "FrontLeft",   5.0f,  110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::FrontRight,  "FrontRight",  60.0f, 170.0f, 60.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::RearLeft,    "RearLeft",    5.0f,  100.0f, 100.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::RearRight,   "RearRight",   55.0f, 165.0f, 55.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
 
     // Slider: 0 (fully retracted) - 170 (fully extended), 70 is a neutral
     // Rotator: 100 (neutral) - 10 (fully rotated)
@@ -59,3 +59,16 @@ constexpr ServoSpec kServos[] = {
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),
               "kServos must have one entry per ServoId, in enum order");
+
+constexpr bool kServosValid() {
+    for (size_t i = 0; i < sizeof(kServos) / sizeof(kServos[0]); ++i) {
+        const ServoSpec& s = kServos[i];
+        if (!(s.minAngle < s.maxAngle)) return false;
+        if (!(s.restAngle >= s.minAngle && s.restAngle <= s.maxAngle)) return false;
+        if (s.primaryDirection != -1 && s.primaryDirection != +1) return false;
+    }
+    return true;
+}
+static_assert(kServosValid(),
+              "kServos malformed: each entry needs minAngle < maxAngle, "
+              "restAngle in [minAngle, maxAngle], primaryDirection ±1");
