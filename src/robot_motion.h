@@ -4,6 +4,8 @@
 #include "config.h"
 #include "robot_movers/dance_mover.h"
 #include "robot_movers/half_step_mover.h"
+#include "robot_movers/head_look_around_mover.h"
+#include "robot_movers/head_nod_mover.h"
 #include "robot_movers/head_shake_mover.h"
 #include "robot_movers/pose_mover.h"
 #include "robot_movers/robot_config.h"
@@ -57,9 +59,27 @@ public:
     void stand();
     void dance(int rotations = 1);  // lift+drop each leg clockwise; one rotation = 4 legs
     void shakeNo(int shakes = 4);   // "no" head gesture; one shake = one side-to-side transition
+    void nodYes(int nods = 4);      // "yes" head gesture; one nod = one up-to-down transition
+    // Sweep both head servos as sine waves. Pattern Circular = pan & tilt 90°
+    // out of phase (circular gaze); Figure8 = Lissajous 2:1 (figure-eight).
+    void lookAround(int cycles     = 2,
+                    HeadLookAroundMover::Pattern pattern = HeadLookAroundMover::Pattern::Circular);
 
     void update();
     bool isIdle() const;
+
+    // Which mover is currently driving the servos (None when idle between
+    // jobs). Exposed so callers can pick a matching facial expression for
+    // the active gesture.
+    enum class Active : uint8_t { None,
+                                  HalfStep,
+                                  Rotation,
+                                  Dance,
+                                  Pose,
+                                  HeadShake,
+                                  HeadNod,
+                                  HeadLookAround };
+    Active getActive() const { return active; }
 
 private:
     enum class Action : uint8_t { None,
@@ -69,14 +89,10 @@ private:
                                   Crouch,
                                   Stand,
                                   Dance,
-                                  HeadShake };
-
-    enum class Active : uint8_t { None,
-                                  HalfStep,
-                                  Rotation,
-                                  Dance,
-                                  Pose,
-                                  HeadShake };
+                                  HeadShake,
+                                  HeadNod,
+                                  HeadLookAroundCircular,
+                                  HeadLookAroundFigure8 };
 
     static constexpr size_t kMaxJobs = 8;
 
@@ -94,6 +110,8 @@ private:
     DanceMover danceMover;
     PoseMover poseMover;
     HeadShakeMover headShakeMover;
+    HeadNodMover headNodMover;
+    HeadLookAroundMover headLookAroundMover;
     Active active = Active::None;
 
     Job queue[kMaxJobs];

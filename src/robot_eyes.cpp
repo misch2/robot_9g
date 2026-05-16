@@ -206,22 +206,30 @@ void RobotEyes::setExpression(Expression e) {
     applyExpressionModifiers();
 }
 
-int RobotEyes::showTestImage() {
+namespace {
+struct EyeAsset {
+    int w;
+    int h;
+    const uint16_t* pixels;
+};
+const EyeAsset& testAsset(int idx) {
     using namespace assets;
-    struct EyeAsset {
-        int w;
-        int h;
-        const uint16_t* pixels;
-    };
-    static constexpr EyeAsset kAssets[] = {
+    static const EyeAsset kAssets[] = {
         {kEye1Width, kEye1Height, kEye1Pixels},
         {kEye2Width, kEye2Height, kEye2Pixels},
         {kEye3Width, kEye3Height, kEye3Pixels},
     };
-    static_assert(sizeof(kAssets) / sizeof(kAssets[0]) == 3, "test-image cycle expects 3 assets");
+    static_assert(sizeof(kAssets) / sizeof(kAssets[0]) == RobotEyes::kNumTestImages,
+                  "test-image asset table must match kNumTestImages");
+    return kAssets[idx];
+}
+}  // namespace
 
-    const int idx     = testImageIdx;
-    const EyeAsset& a = kAssets[idx];
+void RobotEyes::showTestImage(int oneBasedIdx) {
+    if (oneBasedIdx < 1) oneBasedIdx = 1;
+    if (oneBasedIdx > kNumTestImages) oneBasedIdx = kNumTestImages;
+    const int idx     = oneBasedIdx - 1;
+    const EyeAsset& a = testAsset(idx);
     const int ox      = (kDisplayW - a.w) / 2;
     const int oy      = (kDisplayH - a.h) / 2;
 
@@ -241,12 +249,16 @@ int RobotEyes::showTestImage() {
     }
     pushSprite(1, /*alreadyRotated=*/true);
 
-    // Hold the frame until something else (an expression change) reclaims
-    // the displays. Without this the next update() tick would redraw the
-    // animated eye over the top.
     showingTestImage = true;
-    testImageIdx     = (testImageIdx + 1) % 3;
-    return idx + 1;  // 1-based for logging
+    // Cycle position advances to the one after this so the next no-arg
+    // showTestImage() picks up where the explicit selection left off.
+    testImageIdx = (uint8_t)(oneBasedIdx % kNumTestImages);
+}
+
+int RobotEyes::showTestImage() {
+    const int oneBased = (int)testImageIdx + 1;
+    showTestImage(oneBased);
+    return oneBased;
 }
 
 void RobotEyes::showIdentify() {

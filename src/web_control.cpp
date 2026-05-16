@@ -154,6 +154,9 @@ const char kControlHtml[] PROGMEM = R"HTML(<!doctype html>
     <div class="row">
       <button class="chip" data-act="dance">Dance</button>
       <button class="chip" data-act="shake">Shake No</button>
+      <button class="chip" data-act="nod">Nod Yes</button>
+      <button class="chip" data-act="lookAround">Look Around</button>
+      <button class="chip" data-act="figure8">Figure 8</button>
     </div>
   </section>
 
@@ -200,7 +203,10 @@ const char kControlHtml[] PROGMEM = R"HTML(<!doctype html>
   <section>
     <h2>Eyes</h2>
     <div class="row">
-      <button class="chip" data-act="eyeCycle">Cycle test image</button>
+      <button class="chip" data-act="eyeShow" data-arg="1">Eye 1</button>
+      <button class="chip" data-act="eyeShow" data-arg="2">Eye 2</button>
+      <button class="chip" data-act="eyeShow" data-arg="3">Eye 3</button>
+      <button class="chip" data-act="eyeCycle">Cycle</button>
       <button class="chip" data-act="eyeIdentify">Identify L/R</button>
     </div>
   </section>
@@ -707,6 +713,12 @@ void WebControl::handleWsMessage(AsyncWebSocketClient* client, const uint8_t* da
             robot.dance();
         } else if (!strcmp(name, "shake")) {
             robot.shakeNo();
+        } else if (!strcmp(name, "nod")) {
+            robot.nodYes();
+        } else if (!strcmp(name, "lookAround")) {
+            robot.lookAround(2, HeadLookAroundMover::Pattern::Circular);
+        } else if (!strcmp(name, "figure8")) {
+            robot.lookAround(2, HeadLookAroundMover::Pattern::Figure8);
         } else if (!strcmp(name, "legUp") || !strcmp(name, "legDown")) {
             // arg 0..3 maps directly to ServoId::FrontLeft..RearRight (the
             // first four entries of the enum, see config.h).
@@ -725,6 +737,8 @@ void WebControl::handleWsMessage(AsyncWebSocketClient* client, const uint8_t* da
             motion.moveToFraction(ServoId::HeadTilt,    0.0f, ms);
         } else if (!strcmp(name, "eyeCycle")) {
             eyes.showTestImage();
+        } else if (!strcmp(name, "eyeShow")) {
+            eyes.showTestImage(arg);
         } else if (!strcmp(name, "eyeIdentify")) {
             eyes.showIdentify();
         } else {

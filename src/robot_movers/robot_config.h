@@ -53,6 +53,21 @@ struct RobotConfig {
     float headShakeFraction = 0.6f;
     uint32_t headShakeMs    = 150;
 
+    // "Yes" gesture: HeadTilt nod amplitude and per-half-nod duration. One
+    // nod = head moves from one extreme to the other (up to down or vice versa).
+    float headNodFraction = 0.5f;
+    uint32_t headNodMs    = 180;
+
+    // Look-around: both head servos driven as sine waves. One cycle is one
+    // full revolution (circular) or one full figure-8 (Lissajous 2:1).
+    // panAmplitude/tiltAmplitude are fractions of each servo's range from rest;
+    // 1.0 swings to the safety limit. Envelope ramps amplitude in/out over the
+    // first and last `headLookAroundRampMs` to avoid snapping at start/end.
+    float headLookAroundPanAmplitude  = 0.9f;
+    float headLookAroundTiltAmplitude = 0.5f;
+    uint32_t headLookAroundCycleMs    = 1800;
+    uint32_t headLookAroundRampMs     = 400;
+
     // Global speed modifier applied to every motion duration. 1.0 = normal,
     // 0.5 = half speed (everything takes twice as long), 2.0 = double speed.
     // Useful for slowing the whole robot down during debugging. Must be > 0.

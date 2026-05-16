@@ -66,6 +66,9 @@ static void printHelp() {
     Serial.println("   v     Stand (full neutral pose)");
     Serial.println("   z     Dance (lift each leg clockwise)");
     Serial.println("   n     Shake head 'no'");
+    Serial.println("   N     Nod head 'yes'");
+    Serial.println("   L     Look around (circular gaze)");
+    Serial.println("   F     Look around (figure-8)");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   -     Cycle eye1/eye2/eye3.bmp test image");
@@ -167,6 +170,15 @@ static void handleKey(char c) {
         case 'n':
             robotMotion.shakeNo();
             break;
+        case 'N':
+            robotMotion.nodYes();
+            break;
+        case 'L':
+            robotMotion.lookAround(2, HeadLookAroundMover::Pattern::Circular);
+            break;
+        case 'F':
+            robotMotion.lookAround(2, HeadLookAroundMover::Pattern::Figure8);
+            break;
 
         // --- Display ---
         case 'm':
@@ -250,7 +262,7 @@ void setup() {
         while (true) delay(1000);  // FIXME watchdog will reset after 5s, so this isn't truly halting
     }
 #endif
-    robotFace.showBootMessage("Checking radio waves...");
+    robotFace.showBootMessage("Scanning surroundings...");
     webControl.begin();
 
     // Draw the face right here instead of relying on the first loop() tick
@@ -303,20 +315,38 @@ void loop() {
     webControl.update();
     printCurrentConsumption();
 
-    // Show a Concentrating face while the robot is moving; restore the
-    // prior expression once idle. Edge-detected so we don't fight 'm'.
+    // Pick a face for the active mover (Happy for "yes"-nods, Sad for
+    // "no"-shakes, Concentrating for everything else); restore the prior
+    // expression once idle. Edge-detected so we don't fight 'm'.
     static bool wasIdle                            = true;
     static RobotFace::Expression preMoveExpression = RobotFace::Expression::Happy;
+    static RobotMotion::Active lastActive          = RobotMotion::Active::None;
     bool idle                                      = robotMotion.isIdle();
+    RobotMotion::Active activeNow                  = robotMotion.getActive();
     if (wasIdle && !idle) {
         preMoveExpression = robotFace.getExpression();
-        robotFace.setExpression(RobotFace::Expression::Concentrating);
-        robotEyes.setExpression(RobotFace::Expression::Concentrating);
-    } else if (!wasIdle && idle) {
+    }
+    if (!wasIdle && idle) {
         robotFace.setExpression(preMoveExpression);
         robotEyes.setExpression(preMoveExpression);
+    } else if (!idle && activeNow != lastActive) {
+        RobotFace::Expression e;
+        switch (activeNow) {
+            case RobotMotion::Active::HeadNod:
+                e = RobotFace::Expression::Happy;
+                break;
+            case RobotMotion::Active::HeadShake:
+                e = RobotFace::Expression::Sad;
+                break;
+            default:
+                e = RobotFace::Expression::Concentrating;
+                break;
+        }
+        robotFace.setExpression(e);
+        robotEyes.setExpression(e);
     }
-    wasIdle = idle;
+    wasIdle    = idle;
+    lastActive = activeNow;
 
     robotFace.update();
     robotEyes.update();

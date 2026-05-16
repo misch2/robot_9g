@@ -2,7 +2,7 @@
 #include <math.h>
 
 RobotMotion::RobotMotion(ServoMotion& m)
-    : motion(m), halfStepMover(m, config), rotationMover(m, config), danceMover(m, config), poseMover(m), headShakeMover(m, config) {}
+    : motion(m), halfStepMover(m, config), rotationMover(m, config), danceMover(m, config), poseMover(m), headShakeMover(m, config), headNodMover(m, config), headLookAroundMover(m, config) {}
 
 void RobotMotion::begin() { startJob({Action::Stand, 0}); }
 
@@ -40,6 +40,19 @@ void RobotMotion::shakeNo(int shakes) {
     enqueue({Action::HeadShake, shakes});
 }
 
+void RobotMotion::nodYes(int nods) {
+    if (nods <= 0) return;
+    enqueue({Action::HeadNod, nods});
+}
+
+void RobotMotion::lookAround(int cycles, HeadLookAroundMover::Pattern pattern) {
+    if (cycles <= 0) return;
+    Action a = (pattern == HeadLookAroundMover::Pattern::Figure8)
+                   ? Action::HeadLookAroundFigure8
+                   : Action::HeadLookAroundCircular;
+    enqueue({a, cycles});
+}
+
 bool RobotMotion::isIdle() const {
     return active == Active::None && queueEmpty();
 }
@@ -61,6 +74,18 @@ void RobotMotion::startJob(const Job& j) {
         case Action::HeadShake:
             headShakeMover.start(j.param);
             active = Active::HeadShake;
+            break;
+        case Action::HeadNod:
+            headNodMover.start(j.param);
+            active = Active::HeadNod;
+            break;
+        case Action::HeadLookAroundCircular:
+            headLookAroundMover.start(j.param, HeadLookAroundMover::Pattern::Circular);
+            active = Active::HeadLookAround;
+            break;
+        case Action::HeadLookAroundFigure8:
+            headLookAroundMover.start(j.param, HeadLookAroundMover::Pattern::Figure8);
+            active = Active::HeadLookAround;
             break;
         case Action::Stand:
             poseMover.start(PoseMover::Pose::Stand, config);
@@ -98,6 +123,12 @@ void RobotMotion::update() {
             break;
         case Active::HeadShake:
             done = headShakeMover.update(now);
+            break;
+        case Active::HeadNod:
+            done = headNodMover.update(now);
+            break;
+        case Active::HeadLookAround:
+            done = headLookAroundMover.update(now);
             break;
         case Active::None:
             done = true;

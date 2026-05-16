@@ -66,6 +66,13 @@ public:
     // expression renderer until the next setExpression() call.
     int showTestImage();
 
+    // Show a specific eye*.bmp asset by 1-based index (1..kNumTestImages).
+    // Out-of-range values are clamped. Like showTestImage(), freezes the
+    // expression renderer until the next setExpression() call.
+    void showTestImage(int oneBasedIdx);
+
+    static constexpr int kNumTestImages = 3;
+
     // Debug helper: paint the right eye green with a white "R" and the
     // left eye red with a white "L" so the two physical panels can be
     // distinguished at a glance. Freezes the expression renderer until
