@@ -55,8 +55,8 @@ static void printHelp() {
     Serial.println("   r/f   RearRight  stand/crouch");
     Serial.println("   t/g   Translation forward/backward");
     Serial.println("   y/h   Rotation    left/right");
-    Serial.println("   u/o   HeadPan     left/right");
-    Serial.println("   p/;   HeadTilt    up/down");
+    Serial.println("   o/[   HeadPan     left/right");
+    Serial.println("   0/0   HeadTilt    up/down");
     Serial.println("   b     Body + head actuators -> neutral");
     Serial.println(" Movements (queued):");
     Serial.println("   i / k Step forward / backward (one full stride)");
@@ -69,7 +69,7 @@ static void printHelp() {
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
     Serial.println("   9     Cycle eye1/eye2/eye3.bmp test image");
-    Serial.println("   0     Identify eyes (green R / orange L)");
+    Serial.println("   =     Identify eyes (green R / orange L)");
     Serial.println("   ?     This help");
     Serial.println(" Servo channel mapping (PCA9685):");
     for (size_t i = 0; i < sizeof(kServos) / sizeof(kServos[0]); i++) {
@@ -120,16 +120,16 @@ static void handleKey(char c) {
         case 'h':
             servoMotion.moveToFraction(ServoId::Rotation, -cfg.actuateFraction, cfg.scaled(kDirectMoveMs));
             break;
-        case 'u':
+        case 'o':
             servoMotion.moveToFraction(ServoId::HeadPan, +1.0f, cfg.scaled(kDirectMoveMs));
             break;
-        case 'o':
+        case '[':
             servoMotion.moveToFraction(ServoId::HeadPan, -1.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'p':
             servoMotion.moveToFraction(ServoId::HeadTilt, +1.0f, cfg.scaled(kDirectMoveMs));
             break;
-        case ';':
+        case '0':
             servoMotion.moveToFraction(ServoId::HeadTilt, -1.0f, cfg.scaled(kDirectMoveMs));
             break;
         case 'b':
@@ -184,7 +184,7 @@ static void handleKey(char c) {
             break;
         }
 
-        case '0':
+        case '=':
             robotEyes.showIdentify();
             Serial.println("Eye identify: right=green R, left=orange L");
             break;

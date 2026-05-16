@@ -42,19 +42,19 @@ constexpr ServoSpec kServos[] = {
     // FrontRight: 70 (fully straight) - 180 (fully bent)
     // RearLeft: 0 (fully bent) - 100 (fully straight)
     // RearRight: 70 (fully straight) - 180 (fully bent)
-    {ServoId::FrontLeft,   "FrontLeft",   5.0f,  110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
-    {ServoId::FrontRight,  "FrontRight",  60.0f, 170.0f, 60.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
-    {ServoId::RearLeft,    "RearLeft",    5.0f,  100.0f, 100.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
-    {ServoId::RearRight,   "RearRight",   55.0f, 165.0f, 55.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::FrontLeft,   "FrontLeft",   10.0f, 110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::FrontRight,  "FrontRight",  70.0f, 170.0f, 70.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
+    {ServoId::RearLeft,    "RearLeft",    10.0f, 110.0f, 110.0f, -1}, // rest = standing (extended); primary = foot up (toward 0)
+    {ServoId::RearRight,   "RearRight",   70.0f, 170.0f, 70.0f,  +1}, // rest = standing (extended); primary = foot up (toward 180)
 
     // Slider: 0 (fully retracted) - 170 (fully extended), 70 is a neutral
     // Rotator: 100 (neutral) - 10 (fully rotated)
     {ServoId::Translation, "Translation", 0.0f,  170.0f, 70.0f,  +1}, // primary = move RearLeft + FrontRight forward and RearRight + FrontLeft backward
-    {ServoId::Rotation,    "Rotation",    10.0f, 100.0f, 100.0f, -1}, // primary = rotate RearLeft + FrontRight to the right and RearRight + FrontLeft to the left
+    {ServoId::Rotation,    "Rotation",    10.0f, 120.0f, 120.0f, -1}, // primary = twist the body
 
     // can't allow more, it would collide with electronics (step down converter)
     {ServoId::HeadPan,     "HeadPan",     40.0f, 130.0f, 90.0f,  +1}, // rest = look forward, primary = turn head left
-    {ServoId::HeadTilt,    "HeadTilt",    60.0f, 155.0f, 95.0f,  +1}, // rest = look forward, primary = tilt head up
+    {ServoId::HeadTilt,    "HeadTilt",    60.0f, 155.0f, 105.0f, +1}, // rest = look forward, primary = tilt head up
 };
 
 static_assert(sizeof(kServos) / sizeof(kServos[0]) == static_cast<size_t>(ServoId::_Count),
