@@ -20,7 +20,8 @@ void RotationMover::start(int signedFullSteps) {
     if (config.headFollowsRotation) {
         motion.moveToFraction(ServoId::HeadPan,
                               -directionSign * config.headFollowFraction,
-                              config.scaled(config.headFollowMs));
+                              config.scaled(config.headFollowMs),
+                              Easing::EaseInOut);
     }
     beginHalfStep(millis());
 }

@@ -5,15 +5,21 @@
 #include <ESPAsyncWebServer.h>
 
 #include "current_sensor.h"
+#include "robot_eyes.h"
+#include "robot_face.h"
+#include "robot_motion.h"
 #include "servo_manager.h"
 #include "servo_motion.h"
 
 // Wi-Fi access point + HTTP/WebSocket interface for browser-based control.
-// Routes /service to a per-servo "service menu" that drives ServoMotion
-// directly (bypassing RobotMotion). The future main control UI will live at /.
+// Landing page at / is a menu that links to /control (high-level: queued
+// movements, poses, face expressions — drives RobotMotion + RobotFace/Eyes)
+// and /service (low-level: per-servo target/easing testing — drives
+// ServoMotion directly, bypassing RobotMotion).
 class WebControl {
 public:
-    WebControl(ServoManager& manager, ServoMotion& motion, const CurrentSensor& current);
+    WebControl(ServoManager& manager, ServoMotion& motion, RobotMotion& robot,
+               RobotFace& face, RobotEyes& eyes, const CurrentSensor& current);
 
     // Brings up the AP with credentials from wifi_config.h, mounts the HTTP
     // routes, and starts the server. Call once from setup() after Serial.
@@ -30,6 +36,9 @@ private:
 
     ServoManager& manager;
     ServoMotion& motion;
+    RobotMotion& robot;
+    RobotFace& face;
+    RobotEyes& eyes;
     const CurrentSensor& current;
     AsyncWebServer server;
     AsyncWebSocket ws;

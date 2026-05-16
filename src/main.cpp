@@ -68,7 +68,7 @@ static void printHelp() {
     Serial.println("   n     Shake head 'no'");
     Serial.println(" Display:");
     Serial.println("   m     Cycle face expression");
-    Serial.println("   9     Cycle eye1/eye2/eye3.bmp test image");
+    Serial.println("   -     Cycle eye1/eye2/eye3.bmp test image");
     Serial.println("   =     Identify eyes (green R / orange L)");
     Serial.println("   ?     This help");
     Serial.println(" Servo channel mapping (PCA9685):");
@@ -178,7 +178,7 @@ static void handleKey(char c) {
                           RobotFace::expressionName(robotFace.getExpression()));
             break;
 
-        case '9': {
+        case '-': {
             int n = robotEyes.showTestImage();
             Serial.printf("Showing eye%d.bmp on both eyes\n", n);
             break;
